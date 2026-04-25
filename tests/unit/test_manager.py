@@ -14,6 +14,8 @@ Covers:
 
 from __future__ import annotations
 
+import sys
+
 import anyio
 import pytest
 
@@ -112,11 +114,13 @@ class TestAddRemove:
 
 
 class TestPortCanonicalization:
+    @pytest.mark.skipif(sys.platform == "win32", reason="POSIX-specific canonicalization")
     def test_posix_nonexistent_path_passes_through(self) -> None:
         # Paths that don't exist fall back to the raw string — keeps
         # fake-port test fixtures honest.
         assert _canonical_port_key("/dev/not-a-real-port-xyz") == "/dev/not-a-real-port-xyz"
 
+    @pytest.mark.skipif(sys.platform == "win32", reason="POSIX-specific canonicalization")
     def test_posix_realpath_resolves_symlinks(self, tmp_path: object) -> None:
         from pathlib import Path
 
