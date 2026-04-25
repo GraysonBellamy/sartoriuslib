@@ -1,0 +1,37 @@
+name: Feature request
+description: Propose a new command, sink, transport, or behaviour
+labels: [enhancement]
+body:
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: Sketch the API. If it's a new Sartorius command, cite the xBPI opcode or SBI token.
+    validations:
+      required: true
+  - type: dropdown
+    id: protocol
+    attributes:
+      label: Protocol(s)
+      multiple: true
+      options:
+        - xBPI
+        - SBI
+        - both
+        - n/a
+  - type: dropdown
+    id: safety
+    attributes:
+      label: Safety tier (for new commands)
+      options:
+        - READ_ONLY
+        - STATEFUL
+        - PERSISTENT
+        - DANGEROUS
+        - n/a

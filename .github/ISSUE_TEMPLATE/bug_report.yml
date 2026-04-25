@@ -1,0 +1,41 @@
+name: Bug report
+description: Something is broken or behaves unexpectedly
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: Include the exact exception type, message, and `ErrorContext` fields if available.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Minimal reproduction
+      description: Ideally uses `FakeTransport` or a fixture, so we can reproduce without hardware.
+      render: python
+  - type: input
+    id: version
+    attributes:
+      label: sartoriuslib version
+    validations:
+      required: true
+  - type: input
+    id: python
+    attributes:
+      label: Python version
+  - type: input
+    id: os
+    attributes:
+      label: OS
+  - type: input
+    id: device
+    attributes:
+      label: Balance model, firmware, and active protocol (xBPI / SBI) if hardware-related
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: DEBUG-level logs from `sartoriuslib.protocol` / `sartoriuslib.session` if available.
+      render: text

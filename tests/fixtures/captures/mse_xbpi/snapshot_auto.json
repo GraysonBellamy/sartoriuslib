@@ -1,0 +1,262 @@
+[
+  {
+    "opcode": "0x00",
+    "name": "read_software_version",
+    "status": "ok",
+    "subtype": "0x4a",
+    "raw": "0d414a0039210039013901000167",
+    "body": "00392100390139010001"
+  },
+  {
+    "opcode": "0x01",
+    "name": "read_factory_number",
+    "status": "ok",
+    "subtype": "0x45",
+    "raw": "0841450031801165b5",
+    "body": "0031801165"
+  },
+  {
+    "opcode": "0x02",
+    "name": "read_weigh_cell_model",
+    "status": "ok",
+    "subtype": "0x54",
+    "raw": "1741544d534531323033532d3130302d445200000000002b",
+    "body": "4d534531323033532d3130302d44520000000000"
+  },
+  {
+    "opcode": "0x03",
+    "name": "read_user_id",
+    "status": "ok",
+    "subtype": "0x48",
+    "raw": "0b4148000000000000000094",
+    "body": "0000000000000000"
+  },
+  {
+    "opcode": "0x05",
+    "name": "read_oem_text",
+    "status": "ok",
+    "subtype": "0x50",
+    "raw": "134150536172746f726975730000000000000070",
+    "body": "536172746f7269757300000000000000"
+  },
+  {
+    "opcode": "0x07",
+    "name": "read_manufacturer",
+    "status": "ok",
+    "subtype": "0x50",
+    "raw": "134150536172746f726975730000000000000070",
+    "body": "536172746f7269757300000000000000"
+  },
+  {
+    "opcode": "0x0a",
+    "name": "read_configuration_data",
+    "status": "ok",
+    "subtype": "0x48",
+    "raw": "0b414801010000000302019c",
+    "body": "0101000000030201"
+  },
+  {
+    "opcode": "0x0b",
+    "name": "read_threshold_0b",
+    "status": "error",
+    "error_type": "SartoriusMissingArgsError",
+    "error_message": "xBPI raw_xbpi[0x0b]: device returned error 0x07 (invalid or missing args)"
+  },
+  {
+    "opcode": "0x0c",
+    "name": "read_max",
+    "status": "error",
+    "error_type": "SartoriusMissingArgsError",
+    "error_message": "xBPI raw_xbpi[0x0c]: device returned error 0x07 (invalid or missing args)"
+  },
+  {
+    "opcode": "0x0d",
+    "name": "read_increment",
+    "status": "error",
+    "error_type": "SartoriusMissingArgsError",
+    "error_message": "xBPI raw_xbpi[0x0d]: device returned error 0x07 (invalid or missing args)"
+  },
+  {
+    "opcode": "0x0e",
+    "name": "read_threshold_0e",
+    "status": "error",
+    "error_type": "SartoriusMissingArgsError",
+    "error_message": "xBPI raw_xbpi[0x0e]: device returned error 0x07 (invalid or missing args)"
+  },
+  {
+    "opcode": "0x0f",
+    "name": "read_balance_info",
+    "status": "ok",
+    "subtype": "0x24",
+    "raw": "07412402d801a4eb",
+    "body": "02d801a4"
+  },
+  {
+    "opcode": "0x1c",
+    "name": "read_appl_tare",
+    "status": "error",
+    "error_type": "SartoriusMissingArgsError",
+    "error_message": "xBPI raw_xbpi[0x1c]: device returned error 0x07 (invalid or missing args)"
+  },
+  {
+    "opcode": "0x1e",
+    "name": "read_net_weight",
+    "status": "ok",
+    "subtype": "0x48",
+    "raw": "0b4148434808b4393042058b",
+    "body": "434808b439304205"
+  },
+  {
+    "opcode": "0x1f",
+    "name": "read_net_weight_hires",
+    "status": "error",
+    "error_type": "SartoriusMissingArgsError",
+    "error_message": "xBPI raw_xbpi[0x1f]: device returned error 0x07 (invalid or missing args)"
+  },
+  {
+    "opcode": "0x20",
+    "name": "read_gross_weight",
+    "status": "ok",
+    "subtype": "0x48",
+    "raw": "0b414844038bb645304203d6",
+    "body": "44038bb645304203"
+  },
+  {
+    "opcode": "0x21",
+    "name": "read_gross_weight_hires",
+    "status": "error",
+    "error_type": "SartoriusMissingArgsError",
+    "error_message": "xBPI raw_xbpi[0x21]: device returned error 0x07 (invalid or missing args)"
+  },
+  {
+    "opcode": "0x22",
+    "name": "read_tare",
+    "status": "ok",
+    "subtype": "0x48",
+    "raw": "0b414843a31851eb30424888",
+    "body": "43a31851eb304248"
+  },
+  {
+    "opcode": "0x23",
+    "name": null,
+    "status": "error",
+    "error_type": "SartoriusMissingArgsError",
+    "error_message": "xBPI raw_xbpi[0x23]: device returned error 0x07 (invalid or missing args)"
+  },
+  {
+    "opcode": "0x26",
+    "name": "read_weighing_mode",
+    "status": "ok",
+    "subtype": "0x21",
+    "raw": "0441210167",
+    "body": "01"
+  },
+  {
+    "opcode": "0x2e",
+    "name": null,
+    "status": "error",
+    "error_type": "SartoriusMissingArgsError",
+    "error_message": "xBPI raw_xbpi[0x2e]: device returned error 0x07 (invalid or missing args)"
+  },
+  {
+    "opcode": "0x2f",
+    "name": "read_gross_bargraph",
+    "status": "ok",
+    "subtype": "0x12",
+    "raw": "05411201b60f",
+    "body": "01b6"
+  },
+  {
+    "opcode": "0x30",
+    "name": "read_balance_status_block",
+    "status": "ok",
+    "subtype": "0x48",
+    "raw": "0b414808008180181000a267",
+    "body": "08008180181000a2"
+  },
+  {
+    "opcode": "0x32",
+    "name": "read_balance_status",
+    "status": "ok",
+    "subtype": "0x22",
+    "raw": "054122801800",
+    "body": "8018"
+  },
+  {
+    "opcode": "0x35",
+    "name": "read_time_stamp",
+    "status": "ok",
+    "subtype": "0x21",
+    "raw": "044121a50b",
+    "body": "a5"
+  },
+  {
+    "opcode": "0x36",
+    "name": "read_on_off_status",
+    "status": "ok",
+    "subtype": "0x21",
+    "raw": "0441210167",
+    "body": "01"
+  },
+  {
+    "opcode": "0x54",
+    "name": "read_stop_flags",
+    "status": "error",
+    "error_type": "SartoriusMissingArgsError",
+    "error_message": "xBPI raw_xbpi[0x54]: device returned error 0x07 (invalid or missing args)"
+  },
+  {
+    "opcode": "0x55",
+    "name": "read_parameter_table",
+    "status": "error",
+    "error_type": "SartoriusMissingArgsError",
+    "error_message": "xBPI raw_xbpi[0x55]: device returned error 0x07 (invalid or missing args)"
+  },
+  {
+    "opcode": "0x57",
+    "name": "read_cycle_time",
+    "status": "ok",
+    "subtype": "0x24",
+    "raw": "0741240000000a76",
+    "body": "0000000a"
+  },
+  {
+    "opcode": "0x71",
+    "name": "read_sbn_address",
+    "status": "ok",
+    "subtype": "0x21",
+    "raw": "0441210066",
+    "body": "00"
+  },
+  {
+    "opcode": "0x76",
+    "name": "read_temperature_sensors",
+    "status": "error",
+    "error_type": "SartoriusMissingArgsError",
+    "error_message": "xBPI raw_xbpi[0x76]: device returned error 0x07 (invalid or missing args)"
+  },
+  {
+    "opcode": "0xb9",
+    "name": "read_last_cal_record",
+    "status": "ok",
+    "subtype": "0x51",
+    "raw": "14415141ca8fe80000000000000000000000000028",
+    "body": "41ca8fe800000000000000000000000000"
+  },
+  {
+    "opcode": "0xba",
+    "name": "config_generation_counter",
+    "status": "ok",
+    "subtype": "0x21",
+    "raw": "0441211177",
+    "body": "11"
+  },
+  {
+    "opcode": "0xbc",
+    "name": "read_module_list",
+    "status": "ok",
+    "subtype": "0x00",
+    "raw": "2f41004a003921003901390100014a003921003901390100014a003921003901390100014a00392100390139010001d4",
+    "body": "4a003921003901390100014a003921003901390100014a003921003901390100014a00392100390139010001"
+  }
+]

@@ -1,0 +1,119 @@
+[project]
+site_name = "sartoriuslib"
+site_description = "Python library for Sartorius balances (xBPI and SBI over serial)."
+site_url = "https://GraysonBellamy.github.io/sartoriuslib/"
+repo_url = "https://github.com/GraysonBellamy/sartoriuslib"
+repo_name = "GraysonBellamy/sartoriuslib"
+edit_uri = "edit/main/docs/"
+docs_dir = "docs"
+site_dir = "site"
+nav = [
+    { Home = "index.md" },
+    { Installation = "installation.md" },
+    { Quickstart = [
+        { Async = "quickstart-async.md" },
+        { Sync = "quickstart-sync.md" },
+    ] },
+    { Guides = [
+        { Balances = "devices.md" },
+        { Commands = "commands.md" },
+        { Readings = "data-frames.md" },
+        { Streaming = "streaming.md" },
+        { "Logging and acquisition" = "logging.md" },
+        { Testing = "testing.md" },
+        { Safety = "safety.md" },
+        { Troubleshooting = "troubleshooting.md" },
+    ] },
+    { Reference = [
+        { "Wire protocol" = "protocol.md" },
+        { "SBI commands" = "sbi_commands.md" },
+        { "SBI data output" = "sbi_data_output.md" },
+    ] },
+    { "API reference" = [
+        { Overview = "api/index.md" },
+        { "sartoriuslib" = "api/sartoriuslib.md" },
+        { "sartoriuslib.transport" = "api/transport.md" },
+        { "sartoriuslib.protocol" = "api/protocol.md" },
+        { "sartoriuslib.commands" = "api/commands.md" },
+        { "sartoriuslib.devices" = "api/devices.md" },
+        { "sartoriuslib.manager" = "api/manager.md" },
+        { "sartoriuslib.streaming" = "api/streaming.md" },
+        { "sartoriuslib.sinks" = "api/sinks.md" },
+        { "sartoriuslib.sync" = "api/sync.md" },
+        { "sartoriuslib.registry" = "api/registry.md" },
+        { "sartoriuslib.testing" = "api/testing.md" },
+        { "sartoriuslib.errors" = "api/errors.md" },
+        { "sartoriuslib.firmware" = "api/firmware.md" },
+        { "sartoriuslib.config" = "api/config.md" },
+        { "sartoriuslib.maintenance" = "api/maintenance.md" },
+    ] },
+    { Design = "design.md" },
+]
+
+[project.theme]
+variant = "classic"
+features = [
+    "content.code.copy",
+    "content.code.annotate",
+    "navigation.instant",
+    "navigation.tracking",
+    "navigation.sections",
+    "navigation.indexes",
+    "search.highlight",
+]
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+primary = "deep purple"
+accent = "purple"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+primary = "deep purple"
+accent = "purple"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to light mode"
+
+[project.plugins.mkdocstrings]
+default_handler = "python"
+
+[project.plugins.mkdocstrings.handlers.python]
+paths = ["src"]
+
+[project.plugins.mkdocstrings.handlers.python.options]
+docstring_style = "google"
+show_source = true
+show_root_heading = true
+merge_init_into_class = true
+separate_signature = true
+
+[project.markdown_extensions.admonition]
+
+[project.markdown_extensions.attr_list]
+
+[project.markdown_extensions.md_in_html]
+
+[project.markdown_extensions.pymdownx.details]
+
+[project.markdown_extensions.pymdownx.highlight]
+anchor_linenums = true
+
+[project.markdown_extensions.pymdownx.inlinehilite]
+
+[project.markdown_extensions.pymdownx.snippets]
+base_path = [".", "docs"]
+check_paths = true
+
+[project.markdown_extensions.pymdownx.superfences]
+
+[project.markdown_extensions.pymdownx.tabbed]
+alternate_style = true
+
+[project.markdown_extensions.tables]
+
+[project.markdown_extensions.toc]
+permalink = true

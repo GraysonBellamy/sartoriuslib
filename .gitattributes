@@ -1,0 +1,26 @@
+# Ensure consistent line endings
+* text=auto eol=lf
+
+# Python
+*.py text eol=lf diff=python
+*.pyi text eol=lf diff=python
+
+# Config / data
+*.toml text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+
+# Binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+
+# Don't export hidden files / dev configs in sdist
+.github/ export-ignore
+.pre-commit-config.yaml export-ignore
+.gitignore export-ignore
+.gitattributes export-ignore

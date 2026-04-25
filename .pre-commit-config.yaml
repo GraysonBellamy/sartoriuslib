@@ -1,0 +1,64 @@
+default_language_version:
+  python: python3.13
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=500"]
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        args: ["--markdown-linebreak-ext=md"]
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+      - id: debug-statements
+      - id: detect-private-key
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.11
+    hooks:
+      - id: ruff-check
+        args: ["--fix", "--exit-non-zero-on-fix"]
+      - id: ruff-format
+
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.11.7
+    hooks:
+      - id: uv-lock
+
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.2
+    hooks:
+      - id: codespell
+        additional_dependencies: [tomli]
+        args: ["--ignore-words-list=isocal,sartorius,ba,wz,bce,mse,als,unparseable,coo,doub"]
+
+  # Local hooks — run type checkers via `uv run` against the same dep
+  # groups CI uses, so the local typecheck env is identical to the CI
+  # typecheck env. `--frozen` makes the hook fail loudly if uv.lock no longer
+  # satisfies the requested groups.
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy (matches CI typecheck env)
+        entry: uv run --frozen --group type --group test mypy
+        language: system
+        pass_filenames: false
+        files: ^(src|tests)/
+
+      - id: pyright
+        name: pyright (matches CI typecheck env)
+        entry: uv run --frozen --group type --group test pyright
+        language: system
+        pass_filenames: false
+        files: ^(src|tests)/
+
+ci:
+  autoupdate_schedule: monthly
+  skip: [mypy, pyright]
