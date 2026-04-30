@@ -69,7 +69,7 @@ class TestCacheHit:
         # Capacity fires once on the wire even though we called it three times
         # (once via identify, twice explicitly).
         assert transport.writes.count(TX_CAPACITY) == 1
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_increment_cached_separately_from_capacity(self) -> None:
@@ -79,7 +79,7 @@ class TestCacheHit:
         await bal.increment()
         await bal.increment()
         assert transport.writes.count(TX_INCREMENT) == 1
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_cache_snapshot_includes_metrology_keys(self) -> None:
@@ -90,7 +90,7 @@ class TestCacheHit:
         assert "increment:0" in snap
         # Every value pinned to the same counter that identify observed.
         assert all(counter == 1 for counter in snap.values())
-        await bal.aclose()
+        await bal.close()
 
 
 class TestMetrologyCompositeUnit:
@@ -112,7 +112,7 @@ class TestMetrologyCompositeUnit:
         q = await bal.capacity()
         assert math.isclose(q.value, 1200.0, rel_tol=1e-6, abs_tol=1e-12)
         assert q.unit is Unit.G
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_capacity_falls_open_when_display_unit_unreadable(
@@ -135,7 +135,7 @@ class TestMetrologyCompositeUnit:
         # Numeric value still returns; unit fails open to UNKNOWN.
         assert math.isclose(q.value, 1200.0, rel_tol=1e-6, abs_tol=1e-12)
         assert q.unit is Unit.UNKNOWN
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_repeated_capacity_does_not_refetch_p07(self) -> None:
@@ -153,7 +153,7 @@ class TestMetrologyCompositeUnit:
         tx_p07 = build_command(0x55, bytes([0x21, 7]))
         # Exactly one p07 read across both capacity() calls.
         assert transport.writes.count(tx_p07) == 1
-        await bal.aclose()
+        await bal.close()
 
 
 class TestCacheInvalidateOnCounterBump:
@@ -170,7 +170,7 @@ class TestCacheInvalidateOnCounterBump:
         assert transport.writes.count(TX_CAPACITY) == before + 1
         # Cache is re-populated with the new counter.
         assert bal.session.cache_snapshot()["capacity:0"] == 2
-        await bal.aclose()
+        await bal.close()
 
 
 class TestCacheCaveatRows:
@@ -206,7 +206,7 @@ class TestCacheCaveatRows:
         entry3 = await bal.read_parameter(13)
         assert entry3.current == 2, "post-write read must not serve stale cache"
         assert transport.writes.count(tx_read) == writes_after_first_read + 1
-        await bal.aclose()
+        await bal.close()
 
 
 class TestNoCacheWithoutCapability:
@@ -234,7 +234,7 @@ class TestNoCacheWithoutCapability:
         q1 = await bal.capacity()
         q2 = await bal.capacity()
         assert q1.value == q2.value
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_wza_every_capacity_call_hits_wire(self) -> None:
@@ -255,7 +255,7 @@ class TestNoCacheWithoutCapability:
         # probe in identify(). After that the absence is observed and
         # cached_execute bypasses the counter read.
         assert transport.writes.count(TX_COUNTER) == 1
-        await bal.aclose()
+        await bal.close()
 
 
 class TestInvalidateCacheApi:
@@ -267,7 +267,7 @@ class TestInvalidateCacheApi:
         bal.session.invalidate_cache("capacity:0")
         await bal.capacity()
         assert transport.writes.count(TX_CAPACITY) == before + 1
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_invalidate_unknown_key_is_noop(self) -> None:
@@ -276,7 +276,7 @@ class TestInvalidateCacheApi:
         snap_before = bal.session.cache_snapshot()
         bal.session.invalidate_cache("nonexistent_key")
         assert bal.session.cache_snapshot() == snap_before
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_invalidate_all_clears_everything(self) -> None:
@@ -285,7 +285,7 @@ class TestInvalidateCacheApi:
         assert len(bal.session.cache_snapshot()) >= 2  # capacity + increment
         bal.session.invalidate_cache()
         assert bal.session.cache_snapshot() == {}
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_save_menu_flushes_entire_cache(self) -> None:
@@ -296,4 +296,4 @@ class TestInvalidateCacheApi:
         assert len(bal.session.cache_snapshot()) >= 2
         await bal.save_menu(confirm=True)
         assert bal.session.cache_snapshot() == {}
-        await bal.aclose()
+        await bal.close()

@@ -57,7 +57,7 @@ class TestMetrologyFacade:
         assert math.isclose(q.value, 1200.0, abs_tol=1e-6)
         # Opcode reply carries no unit byte — Unit.UNKNOWN is honest.
         assert q.unit is Unit.UNKNOWN
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_increment_returns_quantity(self) -> None:
@@ -65,7 +65,7 @@ class TestMetrologyFacade:
         bal = await open_device(transport, protocol=ProtocolKind.XBPI, timeout=0.1)
         q = await bal.increment()
         assert math.isclose(q.value, 0.001, abs_tol=1e-9)
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_temperature_round_trips_sensor_index(self) -> None:
@@ -81,7 +81,7 @@ class TestMetrologyFacade:
         assert reading.sensor == 2
         assert reading.celsius is not None
         assert math.isclose(reading.celsius, 23.5, abs_tol=1e-3)
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_temperature_sensor_not_installed(self) -> None:
@@ -94,7 +94,7 @@ class TestMetrologyFacade:
         reading = await bal.temperature(sensor=4)
         assert reading.sensor == 4
         assert reading.celsius is None
-        await bal.aclose()
+        await bal.close()
 
 
 # ---------------------------------------------------------------------------
@@ -112,7 +112,7 @@ class TestTypedGetters:
         bal = await open_device(transport, protocol=ProtocolKind.XBPI, timeout=0.1)
         mode = await bal.get_filter_mode()
         assert mode is FilterMode.STABLE
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_get_display_unit_decodes_unit(self) -> None:
@@ -123,7 +123,7 @@ class TestTypedGetters:
         bal = await open_device(transport, protocol=ProtocolKind.XBPI, timeout=0.1)
         unit = await bal.get_display_unit()
         assert unit is Unit.G
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_get_auto_zero_decodes_enum(self) -> None:
@@ -133,7 +133,7 @@ class TestTypedGetters:
         bal = await open_device(transport, protocol=ProtocolKind.XBPI, timeout=0.1)
         mode = await bal.get_auto_zero()
         assert mode is AutoZeroMode.ON
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_get_isocal_mode_decodes_enum(self) -> None:
@@ -143,7 +143,7 @@ class TestTypedGetters:
         bal = await open_device(transport, protocol=ProtocolKind.XBPI, timeout=0.1)
         mode = await bal.get_isocal_mode()
         assert mode is IsoCalMode.ON
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_get_tare_behavior_decodes_enum(self) -> None:
@@ -153,7 +153,7 @@ class TestTypedGetters:
         bal = await open_device(transport, protocol=ProtocolKind.XBPI, timeout=0.1)
         mode = await bal.get_tare_behavior()
         assert mode is TareBehavior.WITH_STABILITY
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_get_menu_access_decodes_enum(self) -> None:
@@ -163,7 +163,7 @@ class TestTypedGetters:
         bal = await open_device(transport, protocol=ProtocolKind.XBPI, timeout=0.1)
         mode = await bal.get_menu_access()
         assert mode is MenuAccessMode.CAN_EDIT
-        await bal.aclose()
+        await bal.close()
 
 
 class TestTypedSetters:
@@ -177,7 +177,7 @@ class TestTypedSetters:
             await bal.set_filter_mode(FilterMode.STABLE)
         # PERSISTENT + no confirm → no bytes on the wire.
         assert len(transport.writes) == writes_before
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_set_filter_mode_encodes_correct_tlvs(self) -> None:
@@ -188,7 +188,7 @@ class TestTypedSetters:
         await bal.set_filter_mode(FilterMode.STABLE, confirm=True)
         tx_write = build_command(0x56, bytes([0x21, 1, 0x21, 2]))
         assert tx_write in transport.writes
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_set_filter_mode_accepts_string_alias(self) -> None:
@@ -200,7 +200,7 @@ class TestTypedSetters:
         await bal.set_filter_mode("very unstable", confirm=True)
         tx_write = build_command(0x56, bytes([0x21, 1, 0x21, 4]))
         assert tx_write in transport.writes
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_set_display_unit_accepts_unit_enum(self) -> None:
@@ -211,7 +211,7 @@ class TestTypedSetters:
         await bal.set_display_unit(Unit.KG, confirm=True)
         tx_write = build_command(0x56, bytes([0x21, 7, 0x21, 3]))
         assert tx_write in transport.writes
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_set_display_unit_accepts_string(self) -> None:
@@ -222,7 +222,7 @@ class TestTypedSetters:
         await bal.set_display_unit("milligram", confirm=True)
         tx_write = build_command(0x56, bytes([0x21, 7, 0x21, 13]))
         assert tx_write in transport.writes
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_set_display_unit_rejects_unknown_string(self) -> None:
@@ -233,7 +233,7 @@ class TestTypedSetters:
         with pytest.raises(UnknownUnitError):
             await bal.set_display_unit("wibbles", confirm=True)
         assert len(transport.writes) == writes_before
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_set_filter_mode_rejects_bogus_string(self) -> None:
@@ -244,7 +244,7 @@ class TestTypedSetters:
         with pytest.raises(SartoriusValidationError):
             await bal.set_filter_mode("extremely_calm", confirm=True)
         assert len(transport.writes) == writes_before
-        await bal.aclose()
+        await bal.close()
 
 
 class TestRawParameterFacade:
@@ -257,7 +257,7 @@ class TestRawParameterFacade:
         with pytest.raises(SartoriusConfirmationRequiredError):
             await bal.write_parameter(1, 2)
         assert len(transport.writes) == writes_before
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_read_parameter_round_trips_index(self) -> None:
@@ -269,7 +269,7 @@ class TestRawParameterFacade:
         assert entry.index == 3  # Balance fills the index that decode couldn't see.
         assert entry.current == 4
         assert entry.max == 6
-        await bal.aclose()
+        await bal.close()
 
 
 class TestCalibrationFacade:
@@ -282,7 +282,7 @@ class TestCalibrationFacade:
             await bal.internal_adjust()
         # DANGEROUS + no confirm → no wire writes.
         assert len(transport.writes) == writes_before
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_last_cal_record_decodes(self) -> None:
@@ -296,7 +296,7 @@ class TestCalibrationFacade:
         assert record.temperature_celsius is not None
         assert math.isclose(record.temperature_celsius, 20.85, abs_tol=1e-3)
         assert record.has_metadata is False
-        await bal.aclose()
+        await bal.close()
 
 
 class TestIdentifyFillsMetrology:
@@ -310,7 +310,7 @@ class TestIdentifyFillsMetrology:
         assert math.isclose(info.capacity.value, 1200.0, abs_tol=1e-6)
         assert info.increment is not None
         assert math.isclose(info.increment.value, 0.001, abs_tol=1e-9)
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_identify_survives_missing_metrology_replies(self) -> None:
@@ -321,4 +321,4 @@ class TestIdentifyFillsMetrology:
         assert info is not None
         assert info.capacity is None
         assert info.increment is None
-        await bal.aclose()
+        await bal.close()

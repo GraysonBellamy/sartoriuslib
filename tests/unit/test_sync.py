@@ -141,7 +141,7 @@ _SKIP_ASYNC_ONLY = {
     # by design — lifecycle is handled via ``with Sartorius.open(...)``.
     "__aenter__",
     "__aexit__",
-    "aclose",
+    "close",
     # Internal helpers — leading underscore, not public.
 }
 

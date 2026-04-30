@@ -248,11 +248,11 @@ class Balance:
         tb: TracebackType | None,
     ) -> None:
         del exc_type, exc, tb
-        await self._session.aclose()
+        await self._session.close()
 
-    async def aclose(self) -> None:
+    async def close(self) -> None:
         """Close the underlying transport. Idempotent."""
-        await self._session.aclose()
+        await self._session.close()
 
     async def refresh_sbi_autoprint_state(self, *, timeout: float | None = None) -> bool:
         """Re-sniff whether an SBI session is currently in autoprint mode.

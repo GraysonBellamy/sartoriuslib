@@ -46,7 +46,7 @@ class TestAutoprintDetect:
         bal, transport = await _open_sbi_with_feed(b"+     0.00 g  \r\n")
         assert bal.session.sbi_autoprint_active is True
         assert transport.writes == ()
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_sniffed_line_is_preserved_for_first_poll(self) -> None:
@@ -55,7 +55,7 @@ class TestAutoprintDetect:
         assert reading.value == 1.23
         assert reading.protocol is ProtocolKind.SBI
         assert transport.writes == ()
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_identify_true_refuses_when_autoprint_detected(self) -> None:
@@ -77,7 +77,7 @@ class TestAutoprintDetect:
         with pytest.raises(SartoriusAutoprintActiveError, match="command replies"):
             await bal.raw_sbi("ESC P")
         assert transport.writes == ()
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_no_reply_control_tokens_still_allowed(self) -> None:
@@ -87,7 +87,7 @@ class TestAutoprintDetect:
         await bal.tare()
         await bal.zero()
         assert transport.writes == (b"\x1bT", b"\x1bV")
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_status_line_counts_as_autoprint(self) -> None:
@@ -97,4 +97,4 @@ class TestAutoprintDetect:
         bal, transport = await _open_sbi_with_feed(b"Stat     Cal.Int.\r\n")
         assert bal.session.sbi_autoprint_active is True
         assert transport.writes == ()
-        await bal.aclose()
+        await bal.close()

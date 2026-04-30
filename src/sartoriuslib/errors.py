@@ -10,12 +10,19 @@ whose priors do not match in non-strict mode (design doc §6.1).
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass, field, fields, replace
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Any, Self
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 
-def _empty_extra() -> dict[str, Any]:
-    return {}
+_EMPTY_EXTRA: Mapping[str, Any] = MappingProxyType({})
+
+
+def _empty_extra() -> Mapping[str, Any]:
+    return _EMPTY_EXTRA
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,6 +30,10 @@ class ErrorContext:
     """Structured context attached to every :class:`SartoriusError`.
 
     Fields are best-effort — missing data is ``None`` rather than raising.
+
+    ``extra`` accepts any ``Mapping`` and is always frozen into a read-only
+    :class:`types.MappingProxyType` at construction so the shared empty
+    sentinel can never be mutated through ``error.context.extra[k] = v``.
     """
 
     command_name: str | None = None
@@ -36,15 +47,99 @@ class ErrorContext:
     family: str | None = None
     sbn_address: int | None = None
     elapsed_s: float | None = None
-    extra: dict[str, Any] = field(default_factory=_empty_extra)
+    extra: Mapping[str, Any] = field(default_factory=_empty_extra)
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.extra, MappingProxyType):
+            object.__setattr__(self, "extra", MappingProxyType(dict(self.extra)))
+
+    def merged(self, **updates: Any) -> Self:
+        """Return a new context with ``updates`` overlaid. Unknown keys go to ``extra``."""
+        known: dict[str, Any] = {}
+        extra_updates: dict[str, Any] = {}
+        for key, value in updates.items():
+            if key in _CONTEXT_KNOWN_FIELDS:
+                known[key] = value
+            else:
+                extra_updates[key] = value
+
+        new_extra: Mapping[str, Any] = (
+            MappingProxyType({**self.extra, **extra_updates}) if extra_updates else self.extra
+        )
+        return replace(self, **known, extra=new_extra)
+
+
+_CONTEXT_KNOWN_FIELDS: frozenset[str] = frozenset(
+    f.name for f in fields(ErrorContext) if f.name != "extra"
+)
+
+
+_EMPTY_CONTEXT = ErrorContext()
 
 
 class SartoriusError(Exception):
-    """Base class for every :mod:`sartoriuslib` exception."""
+    """Base class for every :mod:`sartoriuslib` exception.
+
+    Carries a typed :class:`ErrorContext`. The ``message`` is the human-readable
+    summary; the context is the machine-readable detail.
+    """
+
+    context: ErrorContext
 
     def __init__(self, message: str = "", *, context: ErrorContext | None = None) -> None:
         super().__init__(message)
-        self.context = context or ErrorContext()
+        self.context = context if context is not None else _EMPTY_CONTEXT
+
+    def with_context(self, **updates: Any) -> Self:
+        """Return a copy of this error with its context updated.
+
+        Useful when an inner layer raises and an outer layer wants to enrich
+        the context (for instance adding ``port`` or ``elapsed_s``).
+        """
+        cls = type(self)
+        new = cls.__new__(cls)
+        new.args = self.args
+        try:
+            new.__dict__.update(self.__dict__)
+        except AttributeError:  # pragma: no cover — no slotted subclass today
+            for slot in getattr(cls, "__slots__", ()):
+                if hasattr(self, slot):
+                    object.__setattr__(new, slot, getattr(self, slot))
+        new.context = self.context.merged(**updates)
+        new.__cause__ = self.__cause__
+        new.__context__ = self.__context__
+        new.__traceback__ = self.__traceback__
+        return new
+
+    def __str__(self) -> str:
+        base = super().__str__()
+        ctx = self.context
+        bits: list[str] = []
+        if ctx.command_name is not None:
+            bits.append(f"command={ctx.command_name}")
+        if ctx.opcode is not None:
+            bits.append(f"opcode=0x{ctx.opcode:02X}")
+        if ctx.sbi_token is not None:
+            bits.append(f"sbi_token={ctx.sbi_token!r}")
+        if ctx.protocol is not None:
+            bits.append(f"protocol={ctx.protocol}")
+        if ctx.port is not None:
+            bits.append(f"port={ctx.port}")
+        if ctx.model is not None:
+            bits.append(f"model={ctx.model}")
+        if ctx.family is not None:
+            bits.append(f"family={ctx.family}")
+        if ctx.sbn_address is not None:
+            bits.append(f"sbn=0x{ctx.sbn_address:02X}")
+        if ctx.elapsed_s is not None:
+            bits.append(f"elapsed_s={ctx.elapsed_s:.3f}")
+        if ctx.command_bytes is not None:
+            bits.append(f"command_bytes={ctx.command_bytes!r}")
+        if ctx.raw_response is not None:
+            bits.append(f"raw_response={ctx.raw_response!r}")
+        if ctx.extra:
+            bits.append(f"extra={dict(ctx.extra)!r}")
+        return f"{base} [{', '.join(bits)}]" if bits else base
 
 
 # --- Configuration -------------------------------------------------------

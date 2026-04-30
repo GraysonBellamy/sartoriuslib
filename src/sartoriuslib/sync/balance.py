@@ -404,6 +404,6 @@ class Sartorius:
                 yield wrap_balance(balance, active_portal)
             finally:
                 # Close the underlying transport through the portal;
-                # the Balance's aclose closes the transport it was
+                # the Balance's close closes the transport it was
                 # constructed against.
-                active_portal.call(balance.aclose)
+                active_portal.call(balance.close)

@@ -122,7 +122,7 @@ async def _async_main(args: argparse.Namespace) -> int:
     try:
         results = await _fuzz(bal, opcode=args.opcode, payloads=payloads, timeout=args.timeout)
     finally:
-        await bal.aclose()
+        await bal.close()
 
     if args.out is not None:
         Path(args.out).write_text(json.dumps(results, indent=2), encoding="utf-8")

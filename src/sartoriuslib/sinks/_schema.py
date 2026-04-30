@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 __all__ = ["ColumnSpec", "SchemaLock"]
 
 
-_SCALAR_TYPE = type[float] | type[int] | type[str]
+_SCALAR_TYPE = type[float] | type[int] | type[str] | type[bool]
 
 
 @dataclass(frozen=True, slots=True)

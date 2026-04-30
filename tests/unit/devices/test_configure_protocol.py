@@ -67,7 +67,7 @@ class TestGate:
             with pytest.raises(SartoriusConfirmationRequiredError, match="DANGEROUS"):
                 await bal.configure_protocol(ProtocolKind.SBI)
         finally:
-            await bal.aclose()
+            await bal.close()
 
     @pytest.mark.anyio
     async def test_auto_target_is_rejected(self) -> None:
@@ -77,7 +77,7 @@ class TestGate:
             with pytest.raises(SartoriusValidationError, match="AUTO"):
                 await bal.configure_protocol(ProtocolKind.AUTO, confirm=True)
         finally:
-            await bal.aclose()
+            await bal.close()
 
 
 class TestNoOp:
@@ -96,7 +96,7 @@ class TestNoOp:
             assert transport.writes == writes_before
             assert transport.reopen_count == reopens_before
         finally:
-            await bal.aclose()
+            await bal.close()
 
 
 class TestCrossProtocolSwitch:
@@ -114,7 +114,7 @@ class TestCrossProtocolSwitch:
                 confirm=True,
             )
         finally:
-            await bal.aclose()
+            await bal.close()
 
         assert old_client is not None
         assert old_client.disposed is True
@@ -152,7 +152,7 @@ class TestRollback:
             # Session still operational.
             assert bal.session.state is SessionState.OPERATIONAL
         finally:
-            await bal.aclose()
+            await bal.close()
 
     @pytest.mark.anyio
     async def test_failed_rollback_marks_session_broken(self) -> None:
@@ -182,7 +182,7 @@ class TestRollback:
             assert exc_info.value.__cause__ is not None
             assert "rollback_error" in (exc_info.value.context.extra or {})
         finally:
-            await bal.aclose()
+            await bal.close()
 
 
 class TestBrokenSessionRefusesDispatch:
@@ -207,4 +207,4 @@ class TestBrokenSessionRefusesDispatch:
             with pytest.raises(SartoriusConnectionError, match="BROKEN"):
                 await bal.identify()
         finally:
-            await bal.aclose()
+            await bal.close()

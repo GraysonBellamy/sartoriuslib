@@ -96,7 +96,7 @@ class SampleSink(Protocol):
 # ---------------------------------------------------------------------------
 
 
-def sample_to_row(sample: Sample) -> dict[str, float | int | str | None]:
+def sample_to_row(sample: Sample) -> dict[str, float | int | str | bool | None]:
     """Flatten a :class:`Sample` into a single row dict for tabular sinks.
 
     Schema layout (stable across samples; design §10):
@@ -119,7 +119,7 @@ def sample_to_row(sample: Sample) -> dict[str, float | int | str | None]:
     the session's active protocol) so sinks never see a missing
     column.
     """
-    row: dict[str, float | int | str | None] = {
+    row: dict[str, float | int | str | bool | None] = {
         "device": sample.device,
         "requested_at": sample.requested_at.isoformat(),
         "received_at": sample.received_at.isoformat(),

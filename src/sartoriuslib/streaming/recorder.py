@@ -50,6 +50,7 @@ from typing import TYPE_CHECKING, Protocol
 import anyio
 
 from sartoriuslib._logging import get_logger
+from sartoriuslib.protocol.base import ProtocolKind
 from sartoriuslib.streaming.sample import Sample
 
 if TYPE_CHECKING:
@@ -59,7 +60,6 @@ if TYPE_CHECKING:
 
     from sartoriuslib.devices.models import Reading
     from sartoriuslib.manager import DeviceResult
-    from sartoriuslib.protocol.base import ProtocolKind
 
 __all__ = [
     "AcquisitionSummary",
@@ -337,9 +337,8 @@ def _build_batch(
     flapping devices in the data, not just in logs.
 
     ``Sample.protocol`` resolves from :attr:`Reading.protocol` on
-    success and from :attr:`DeviceResult.protocol` on failure; both
-    paths fall back to ``None`` only when a non-manager
-    :class:`PollSource` fails to supply the hint (unusual).
+    success and from ``error.context.protocol`` on failure; both paths
+    fall back to ``None`` only when neither carries the hint (unusual).
     """
     midpoint = _midpoint(requested_at, received_at)
     elapsed_s = (received_at - requested_at).total_seconds()
@@ -348,7 +347,18 @@ def _build_batch(
     for name, result in results.items():
         reading = result.value
         error = result.error
-        protocol: ProtocolKind | None = reading.protocol if reading is not None else result.protocol
+        protocol: ProtocolKind | None
+        if reading is not None:
+            protocol = reading.protocol
+        elif error is not None and error.context.protocol is not None:
+            # SartoriusError.context.protocol is a string ("xbpi"/"sbi");
+            # map back to the enum where possible.
+            try:
+                protocol = ProtocolKind(error.context.protocol)
+            except ValueError:
+                protocol = None
+        else:
+            protocol = None
         if error is not None:
             _logger.warning(
                 "recorder.device_error",

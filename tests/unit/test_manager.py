@@ -147,7 +147,7 @@ class TestPortCanonicalization:
 
 class TestPoll:
     @pytest.mark.anyio
-    async def test_poll_returns_reading_with_protocol(self) -> None:
+    async def test_poll_returns_reading(self) -> None:
         async with SartoriusManager() as mgr:
             await mgr.add("b1", _build_fake_transport())
             results = await mgr.poll()
@@ -156,7 +156,7 @@ class TestPoll:
             assert isinstance(result, DeviceResult)
             assert result.ok
             assert isinstance(result.value, Reading)
-            assert result.protocol is ProtocolKind.XBPI
+            assert result.value.protocol is ProtocolKind.XBPI
             assert result.error is None
 
     @pytest.mark.anyio
@@ -173,7 +173,6 @@ class TestPoll:
             results = await mgr.poll()
             result = results["sbi"]
             assert result.ok
-            assert result.protocol is ProtocolKind.SBI
             assert result.value is not None
             assert result.value.protocol is ProtocolKind.SBI
 
@@ -212,7 +211,6 @@ class TestPoll:
             result = results["b1"]
             assert not result.ok
             assert isinstance(result.error, SartoriusError)
-            assert result.protocol is ProtocolKind.XBPI
 
     @pytest.mark.anyio
     async def test_error_policy_raise_wraps_in_exception_group(self) -> None:

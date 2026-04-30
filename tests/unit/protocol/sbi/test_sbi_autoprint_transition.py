@@ -52,7 +52,7 @@ class TestAutoprintEnableMidSession:
         assert reading.value == 0.031
         # identify wrote one ESC x1_ token before noticing the surprise.
         assert transport.writes == (b"\x1bx1_",)
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_subsequent_command_reply_blocked_pre_io(self) -> None:
@@ -81,7 +81,7 @@ class TestAutoprintEnableMidSession:
         with pytest.raises(SartoriusAutoprintActiveError, match="command replies"):
             await bal.raw_sbi("ESC x1_")
         assert transport.writes == before
-        await bal.aclose()
+        await bal.close()
 
 
 class TestAutoprintDisableMidSession:
@@ -111,7 +111,7 @@ class TestAutoprintDisableMidSession:
         assert reply.lines[0].reading is not None
         assert reply.lines[0].reading.value == 1.23
         assert transport.writes == (b"\x1bP",)
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_refresh_with_observed_line_keeps_consume_mode(self) -> None:
@@ -131,4 +131,4 @@ class TestAutoprintDisableMidSession:
         reading = await bal.poll()
         assert reading.value == 0.031
         assert transport.writes == ()
-        await bal.aclose()
+        await bal.close()

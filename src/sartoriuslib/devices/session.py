@@ -870,7 +870,7 @@ class Session:
 
     # ------------------------------------------------------------------ lifecycle
 
-    async def aclose(self) -> None:
+    async def close(self) -> None:
         """Close the underlying transport, if one is wired.
 
         Idempotent — safe to call multiple times. The factory owns the

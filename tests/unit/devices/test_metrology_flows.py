@@ -125,7 +125,7 @@ class TestMSEFullFlow:
         assert bal.session.cache_snapshot() == {}
         assert build_command(0x47) in transport.writes
 
-        await bal.aclose()
+        await bal.close()
 
 
 class TestWZAFullFlow:
@@ -154,7 +154,7 @@ class TestWZAFullFlow:
         # Each capacity call hits the wire.
         tx_capacity = build_command(0x0C, bytes([0x21, 0x00]))
         assert transport.writes.count(tx_capacity) == 3  # identify probe + 2 explicit
-        await bal.aclose()
+        await bal.close()
 
 
 class TestBCEFullFlow:
@@ -171,7 +171,7 @@ class TestBCEFullFlow:
         assert Capability.PARAMETER_TABLE in info.capabilities
         # BCE has no TEMPERATURE_SENSORS in the family default — capacity still present.
         assert info.capacity is not None
-        await bal.aclose()
+        await bal.close()
 
 
 # ---------------------------------------------------------------------------
@@ -268,7 +268,7 @@ class TestTemperatureDiscovery:
         assert bal.info is not None
         assert bal.info.temperature_sensor_indices == (0, 1, 2, 3)
 
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_no_sensors_returns_empty_tuple(self) -> None:
@@ -304,7 +304,7 @@ class TestTemperatureDiscovery:
         assert discovered == ()
         assert bal.info is not None
         assert bal.info.temperature_sensor_indices == ()
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_max_index_caps_walk(self) -> None:
@@ -323,7 +323,7 @@ class TestTemperatureDiscovery:
         bal = await open_device(transport, protocol=ProtocolKind.XBPI, timeout=0.1)
         discovered = await bal.discover_temperature_sensors(max_index=2)
         assert discovered == (0, 1, 2)
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_oor_index_does_not_poison_in_range_indices(self) -> None:
@@ -358,7 +358,7 @@ class TestTemperatureDiscovery:
         t1 = await bal.temperature(1)
         assert t1.celsius is not None
         assert math.isclose(t1.celsius, 25.6, rel_tol=1e-6, abs_tol=1e-12)
-        await bal.aclose()
+        await bal.close()
 
 
 class TestRawParameterWithoutSpec:
@@ -377,7 +377,7 @@ class TestRawParameterWithoutSpec:
         assert entry.index == 25
         assert entry.current == 1
         assert entry.max == 5
-        await bal.aclose()
+        await bal.close()
 
 
 class TestCalibrationVariants:
@@ -392,7 +392,7 @@ class TestCalibrationVariants:
         bal = await open_device(transport, protocol=ProtocolKind.XBPI, timeout=0.1)
         await bal.internal_adjust(cal_type=0x70, confirm=True)
         assert tx_adjust in transport.writes
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_last_cal_record_full_record(self) -> None:
@@ -409,7 +409,7 @@ class TestCalibrationVariants:
         assert record.has_metadata is True
         assert record.signature == signature
         assert record.counters == counters
-        await bal.aclose()
+        await bal.close()
 
 
 class TestReloadMenuFlushesCache:
@@ -426,7 +426,7 @@ class TestReloadMenuFlushesCache:
         assert len(bal.session.cache_snapshot()) >= 2
         await bal.reload_menu(confirm=True)
         assert bal.session.cache_snapshot() == {}
-        await bal.aclose()
+        await bal.close()
 
 
 class TestSafetyTierSafetyProofs:
@@ -447,7 +447,7 @@ class TestSafetyTierSafetyProofs:
         # No 0x56 on the wire, ever.
         tx_write = build_command(0x56, bytes([0x21, 1, 0x21, 2]))
         assert tx_write not in transport.writes
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_internal_adjust_no_confirm_writes_nothing(self) -> None:
@@ -461,7 +461,7 @@ class TestSafetyTierSafetyProofs:
         assert len(transport.writes) == writes_before
         # No 0x28 with any cal_type ever on the wire.
         assert not any(w.startswith(bytes([0x04, 0x01, 0x09, 0x28])) for w in transport.writes)
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_save_menu_no_confirm_writes_nothing(self) -> None:
@@ -474,7 +474,7 @@ class TestSafetyTierSafetyProofs:
             await bal.save_menu()
         assert len(transport.writes) == writes_before
         assert build_command(0x47) not in transport.writes
-        await bal.aclose()
+        await bal.close()
 
 
 class TestCachePreservesObjectIdentity:
@@ -494,7 +494,7 @@ class TestCachePreservesObjectIdentity:
         # Unit / value identity preserved.
         assert q1.value == q2.value
         assert q1.unit is q2.unit is Unit.UNKNOWN
-        await bal.aclose()
+        await bal.close()
 
 
 class TestIdentifyDoesNotPoisonCacheOnFailure:
@@ -515,4 +515,4 @@ class TestIdentifyDoesNotPoisonCacheOnFailure:
             transport.add_script(tx, rx)
         q = await bal.capacity()
         assert math.isclose(q.value, 500.0, rel_tol=1e-6)
-        await bal.aclose()
+        await bal.close()

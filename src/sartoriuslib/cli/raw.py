@@ -101,7 +101,7 @@ async def _async_main(args: argparse.Namespace) -> int:
         else:
             await _run_sbi(bal, args)
     finally:
-        await bal.aclose()
+        await bal.close()
     return 0
 
 

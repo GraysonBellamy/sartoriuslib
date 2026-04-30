@@ -44,7 +44,7 @@ class TestAutoprintConsume:
         assert sample.reading.value == 0.0
         assert sample.metadata["mode"] == "autoprint"
         assert transport.writes == ()
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_without_live_line_times_out_loudly(self) -> None:
@@ -60,7 +60,7 @@ class TestAutoprintConsume:
             async with bal.stream(mode="autoprint", timeout=0.01):
                 pass
         assert transport.writes == ()
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_refuses_on_xbpi_session(self) -> None:
@@ -73,7 +73,7 @@ class TestAutoprintConsume:
         with pytest.raises(SartoriusProtocolUnsupportedError, match="SBI"):
             async with bal.stream(mode="autoprint", timeout=0.1):
                 pass
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_consumes_multiple_lines_without_writing(self) -> None:
@@ -100,7 +100,7 @@ class TestAutoprintConsume:
         assert third.reading is not None
         assert third.reading.value == -12.345
         assert transport.writes == ()
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_skips_midline_numeric_fragment(self) -> None:
@@ -122,4 +122,4 @@ class TestAutoprintConsume:
         assert sample.reading.value == 0.031
         assert sample.reading.stable is False
         assert transport.writes == ()
-        await bal.aclose()
+        await bal.close()

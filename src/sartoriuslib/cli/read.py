@@ -61,7 +61,7 @@ async def _async_main(args: argparse.Namespace) -> int:
         reading = await bal.poll()
         sys.stdout.write(_format_reading(reading, balance=bal))
     finally:
-        await bal.aclose()
+        await bal.close()
     return 0
 
 

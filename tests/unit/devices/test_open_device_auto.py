@@ -59,7 +59,7 @@ class TestAutoXbpi:
             assert bal.info is not None
             assert bal.info.model == "MSE1203S-100-DR"
         finally:
-            await bal.aclose()
+            await bal.close()
 
 
 class TestAutoSbiAutoprint:
@@ -88,7 +88,7 @@ class TestAutoSbiAutoprint:
             assert reading.value == 1.23
             assert transport.writes == ()
         finally:
-            await bal.aclose()
+            await bal.close()
 
     @pytest.mark.anyio
     async def test_identify_true_with_autoprint_raises(self) -> None:
@@ -119,4 +119,4 @@ class TestAutoSbiIdentityProbe:
             assert bal.info is not None
             assert bal.info.model == "WZA8202-N"
         finally:
-            await bal.aclose()
+            await bal.close()

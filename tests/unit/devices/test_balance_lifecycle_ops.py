@@ -52,7 +52,7 @@ class TestSetBaudRateGate:
             with pytest.raises(SartoriusConfirmationRequiredError, match="DANGEROUS"):
                 await bal.set_baud_rate(0x01, baudrate=19200)
         finally:
-            await bal.aclose()
+            await bal.close()
 
     @pytest.mark.anyio
     async def test_rejects_out_of_range_wire_code(self) -> None:
@@ -64,7 +64,7 @@ class TestSetBaudRateGate:
             with pytest.raises(SartoriusValidationError, match="wire_code"):
                 await bal.set_baud_rate(0x100, baudrate=19200, confirm=True)
         finally:
-            await bal.aclose()
+            await bal.close()
 
 
 class TestSetBaudRateSuccess:
@@ -79,7 +79,7 @@ class TestSetBaudRateSuccess:
         try:
             new_info = await bal.set_baud_rate(0x01, baudrate=19200, confirm=True)
         finally:
-            await bal.aclose()
+            await bal.close()
 
         # The 0x5C frame went out at the old baud.
         assert _set_baud_tx(0x01) in transport.writes
@@ -98,7 +98,7 @@ class TestWriteSbnAddressGate:
             with pytest.raises(SartoriusConfirmationRequiredError, match="DANGEROUS"):
                 await bal.write_sbn_address(0x05)
         finally:
-            await bal.aclose()
+            await bal.close()
 
     @pytest.mark.anyio
     async def test_rejects_out_of_range_sbn(self) -> None:
@@ -110,7 +110,7 @@ class TestWriteSbnAddressGate:
             with pytest.raises(SartoriusValidationError, match="sbn"):
                 await bal.write_sbn_address(0x100, confirm=True)
         finally:
-            await bal.aclose()
+            await bal.close()
 
 
 class TestWriteSbnAddressSuccess:
@@ -124,7 +124,7 @@ class TestWriteSbnAddressSuccess:
         try:
             readback = await bal.write_sbn_address(new_sbn, confirm=True)
         finally:
-            await bal.aclose()
+            await bal.close()
 
         assert readback == new_sbn
         # Both the write and the readback (via READ_SBN, opcode 0x71) ran.
@@ -147,4 +147,4 @@ class TestWriteSbnAddressSuccess:
             )
             assert bal.session.dst_sbn == new_sbn
         finally:
-            await bal.aclose()
+            await bal.close()

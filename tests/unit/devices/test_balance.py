@@ -97,7 +97,7 @@ class TestOpenDevice:
         assert reading.protocol is ProtocolKind.SBI
         assert reading.value == 0.0
         assert reading.unit is Unit.G
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_sbi_tare_zero_and_raw(self) -> None:
@@ -114,7 +114,7 @@ class TestOpenDevice:
         reply = await bal.raw_sbi("ESC P")
         assert reply.lines[0].reading is not None
         assert transport.writes[-3:] == (b"\x1bT", b"\x1bV", b"\x1bP")
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_forced_sbi_open_detects_autoprint_and_poll_consumes(self) -> None:
@@ -133,7 +133,7 @@ class TestOpenDevice:
         assert reading.value == 0.031
         assert reading.stable is False
         assert transport.writes == ()
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_forced_sbi_identify_refuses_when_autoprint_active(self) -> None:
@@ -164,7 +164,7 @@ class TestOpenDevice:
         with pytest.raises(SartoriusAutoprintActiveError, match="command replies"):
             await bal.raw_sbi("ESC P")
         assert transport.writes == ()
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_sbi_command_reply_detects_autoprint_enabled_mid_session(self) -> None:
@@ -183,7 +183,7 @@ class TestOpenDevice:
         reading = await bal.poll()
         assert reading.value == 0.031
         assert transport.writes == (b"\x1bx1_",)
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_sbi_refresh_detects_autoprint_disabled_mid_session(self) -> None:
@@ -204,7 +204,7 @@ class TestOpenDevice:
         assert reply.lines[0].reading is not None
         assert reply.lines[0].reading.value == 1.23
         assert transport.writes == (b"\x1bP",)
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_sbi_refresh_keeps_autoprint_active_and_preserves_line(self) -> None:
@@ -221,7 +221,7 @@ class TestOpenDevice:
         reading = await bal.poll()
         assert reading.value == 0.031
         assert transport.writes == ()
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_sbi_no_reply_command_allowed_when_autoprint_active(self) -> None:
@@ -237,7 +237,7 @@ class TestOpenDevice:
         )
         await bal.tare()
         assert transport.writes == (b"\x1bT",)
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_identify_false_skips_probe(self) -> None:
@@ -251,7 +251,7 @@ class TestOpenDevice:
         )
         assert bal.info is None
         assert transport.writes == ()
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_closes_transport_on_identify_failure(self) -> None:
@@ -278,8 +278,8 @@ class TestOpenDevice:
     @pytest.mark.anyio
     async def test_aclose_is_idempotent(self) -> None:
         bal, transport = await _open_balance()
-        await bal.aclose()
-        await bal.aclose()
+        await bal.close()
+        await bal.close()
         assert transport.is_open is False
 
     @pytest.mark.anyio
@@ -288,7 +288,7 @@ class TestOpenDevice:
         transport = FakeTransport(_script_with_identify())
         bal = await open_balance(transport, protocol=ProtocolKind.XBPI, timeout=0.1)
         assert isinstance(bal, Balance)
-        await bal.aclose()
+        await bal.close()
 
 
 # ---------------------------------------------------------------------------
@@ -314,7 +314,7 @@ class TestIdentify:
         # Family-default capabilities seeded on the session.
         assert info.capabilities & Capability.XBPI_SUPPORT
         assert bal.session.family is BalanceFamily.CUBIS
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_wza_identify_classifies_oem(self) -> None:
@@ -326,7 +326,7 @@ class TestIdentify:
         info = bal.info
         assert info is not None
         assert info.family is BalanceFamily.OEM_WEIGH_CELL
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_bce_identify_classifies_basic_lab(self) -> None:
@@ -338,7 +338,7 @@ class TestIdentify:
         info = bal.info
         assert info is not None
         assert info.family is BalanceFamily.BASIC_LAB
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_unknown_model_classifies_unknown(self) -> None:
@@ -350,7 +350,7 @@ class TestIdentify:
         info = bal.info
         assert info is not None
         assert info.family is BalanceFamily.UNKNOWN
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_identify_reruns_overwrites_cache(self) -> None:
@@ -374,7 +374,7 @@ class TestIdentify:
         )
         for tx in identity_txs:
             assert transport.writes.count(tx) == 2, f"{tx.hex()} should appear twice"
-        await bal.aclose()
+        await bal.close()
 
 
 # ---------------------------------------------------------------------------
@@ -396,7 +396,7 @@ class TestReads:
         assert reading.unit is Unit.G
         assert reading.stable is True
         assert reading.protocol is ProtocolKind.XBPI
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_read_net_hires_passes_resolution_arg(self) -> None:
@@ -412,7 +412,7 @@ class TestReads:
         bal.session.update_identity(capabilities=Capability.HIRES_WEIGHT)
         await bal.read_net(hires=1)
         assert tx_hires in transport.writes
-        await bal.aclose()
+        await bal.close()
 
 
 # ---------------------------------------------------------------------------
@@ -430,7 +430,7 @@ class TestTareZero:
         )
         await bal.tare()
         assert canned_frames.TX_TARE in transport.writes
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_zero_no_confirm_required(self) -> None:
@@ -441,7 +441,7 @@ class TestTareZero:
         )
         await bal.zero()
         assert canned_frames.TX_ZERO in transport.writes
-        await bal.aclose()
+        await bal.close()
 
 
 # ---------------------------------------------------------------------------
@@ -460,7 +460,7 @@ class TestStatus:
         status = await bal.status()
         assert status.state is BalanceState.STABLE
         assert status.stable is True
-        await bal.aclose()
+        await bal.close()
 
 
 # ---------------------------------------------------------------------------
@@ -477,7 +477,7 @@ class TestRawXbpi:
         assert 0x71 in SAFE_READ_ONLY_OPCODES
         frame = await bal.raw_xbpi(0x71)
         assert frame.subtype == 0x21
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_unsafe_opcode_requires_confirm(self) -> None:
@@ -489,7 +489,7 @@ class TestRawXbpi:
             await bal.raw_xbpi(0x14)
         # Pre-I/O refusal: no write went out.
         assert len(transport.writes) == writes_before
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_unsafe_opcode_proceeds_with_confirm(self) -> None:
@@ -502,7 +502,7 @@ class TestRawXbpi:
         frame = await bal.raw_xbpi(0x14, confirm=True)
         assert frame.subtype == 0x00  # ACK
         assert len(transport.writes) == writes_before + 1
-        await bal.aclose()
+        await bal.close()
 
 
 # ---------------------------------------------------------------------------
@@ -515,7 +515,7 @@ class TestPriorPropagation:
     async def test_session_family_matches_identified_device(self) -> None:
         bal, _ = await _open_balance(build_identify_script(model="MSE1203S-100-DR"))
         assert bal.session.family is BalanceFamily.CUBIS
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_availability_cache_populated_by_identify(self) -> None:
@@ -531,7 +531,7 @@ class TestPriorPropagation:
             "read_sbn",
         ):
             assert bal.session.availability_of(name) is Availability.SUPPORTED
-        await bal.aclose()
+        await bal.close()
 
 
 # ---------------------------------------------------------------------------
@@ -560,7 +560,7 @@ class TestDeviceErrors:
         with pytest.raises(SartoriusUnsupportedCommandError, match="previously responded"):
             await bal.poll()
         assert len(transport.writes) == writes_after_first
-        await bal.aclose()
+        await bal.close()
 
 
 # ---------------------------------------------------------------------------
@@ -578,4 +578,4 @@ class TestDeviceInfoShape:
 
         with pytest.raises(FrozenInstanceError):
             info.model = "changed"  # type: ignore[misc]
-        await bal.aclose()
+        await bal.close()

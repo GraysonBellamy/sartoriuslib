@@ -94,17 +94,15 @@ class ErrorPolicy(Enum):
 class DeviceResult[T]:
     """Per-device result container — value **or** error, never both.
 
-    :attr:`protocol` is populated by :class:`SartoriusManager` from the
-    balance's session so error samples from the
-    :mod:`~sartoriuslib.streaming` layer can still record which
-    protocol produced the failure. Non-manager
-    :class:`~sartoriuslib.streaming.PollSource` stubs may leave it
-    ``None``.
+    The protocol that produced the failure is available via
+    ``result.error.context.protocol`` when the error carries context;
+    keeping it off the result keeps the success-path representation
+    clean and aligns with the ecosystem ``DeviceResult`` shape used by
+    :mod:`alicatlib` and :mod:`watlowlib`.
     """
 
     value: T | None
     error: SartoriusError | None
-    protocol: ProtocolKind | None = None
 
     @property
     def ok(self) -> bool:
@@ -610,7 +608,7 @@ class SartoriusManager:
     async def _teardown_device(self, entry: _DeviceEntry) -> None:
         """Release a balance's port ref, closing the transport on last ref.
 
-        ``Balance.aclose()`` would close the underlying transport,
+        ``Balance.close()`` would close the underlying transport,
         which is shared across balances on one RS-485 bus. Instead of
         calling it per-balance, the manager releases the port ref and
         only closes the transport via :meth:`_maybe_teardown_port`
@@ -658,18 +656,13 @@ class SartoriusManager:
             for member in member_names:
                 entry = self._devices[member]
                 balance = entry.balance
-                protocol = balance.session.active_protocol
                 try:
                     value: T = await op(balance)
                 except SartoriusError as err:
-                    results[member] = DeviceResult(value=None, error=err, protocol=protocol)
+                    results[member] = DeviceResult(value=None, error=err)
                     errors.append(err)
                 else:
-                    results[member] = DeviceResult(
-                        value=value,
-                        error=None,
-                        protocol=protocol,
-                    )
+                    results[member] = DeviceResult(value=value, error=None)
 
         async with anyio.create_task_group() as tg:
             for member_names in groups.values():

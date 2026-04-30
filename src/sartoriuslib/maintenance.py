@@ -94,7 +94,7 @@ async def switch_protocol(
             confirm=confirm,
         )
     finally:
-        await bal.aclose()
+        await bal.close()
 
 
 async def set_baud_rate(
@@ -139,7 +139,7 @@ async def set_baud_rate(
             confirm=confirm,
         )
     finally:
-        await bal.aclose()
+        await bal.close()
 
 
 async def write_sbn_address(
@@ -175,4 +175,4 @@ async def write_sbn_address(
             confirm=confirm,
         )
     finally:
-        await bal.aclose()
+        await bal.close()

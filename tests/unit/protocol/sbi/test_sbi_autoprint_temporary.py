@@ -53,7 +53,7 @@ class TestTemporaryAutoprint:
             ):
                 pass
         assert transport.writes == ()
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_with_confirm_explicitly_unimplemented(self) -> None:
@@ -67,7 +67,7 @@ class TestTemporaryAutoprint:
             ):
                 pass
         assert transport.writes == ()
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_refusal_path_does_not_change_session_state(self) -> None:
@@ -84,4 +84,4 @@ class TestTemporaryAutoprint:
                 pass
         assert bool(bal.session.sbi_autoprint_active) is before
         assert transport.writes == ()
-        await bal.aclose()
+        await bal.close()

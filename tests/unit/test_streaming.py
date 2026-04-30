@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
 
 from sartoriuslib import (
+    ErrorContext,
     ProtocolKind,
     Reading,
     SartoriusAutoprintActiveError,
@@ -85,14 +86,11 @@ class _CountingPollSource:
             if n in self._raise_for:
                 err = SartoriusTimeoutError(
                     "scripted failure",
+                    context=ErrorContext(protocol=ProtocolKind.XBPI.value),
                 )
-                out[n] = DeviceResult(value=None, error=err, protocol=ProtocolKind.XBPI)
+                out[n] = DeviceResult(value=None, error=err)
             else:
-                out[n] = DeviceResult(
-                    value=_make_reading(),
-                    error=None,
-                    protocol=ProtocolKind.XBPI,
-                )
+                out[n] = DeviceResult(value=_make_reading(), error=None)
         return out
 
 
@@ -245,7 +243,7 @@ class TestBalanceStream:
             sample = await anext(stream)
         assert sample.reading is not None
         assert sample.metadata["mode"] == "poll"
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_autoprint_mode_consumes_existing_sbi_line(self) -> None:
@@ -263,7 +261,7 @@ class TestBalanceStream:
             sample = await anext(stream)
         assert sample.reading is not None
         assert sample.metadata["mode"] == "autoprint"
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_poll_stream_refuses_when_sbi_autoprint_active(self) -> None:
@@ -280,7 +278,7 @@ class TestBalanceStream:
         with pytest.raises(SartoriusAutoprintActiveError, match="mode='autoprint'"):
             async with bal.stream(rate_hz=1.0, timeout=0.1):
                 pass
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_autoprint_mode_skips_midline_numeric_fragment(self) -> None:
@@ -299,7 +297,7 @@ class TestBalanceStream:
         assert sample.reading is not None
         assert sample.reading.value == 0.031
         assert sample.reading.stable is False
-        await bal.aclose()
+        await bal.close()
 
     @pytest.mark.anyio
     async def test_autoprint_mode_without_existing_line_fails_loudly(self) -> None:
@@ -313,7 +311,7 @@ class TestBalanceStream:
         with pytest.raises(SartoriusTimeoutError):
             async with bal.stream(mode="autoprint", timeout=0.01):
                 pass
-        await bal.aclose()
+        await bal.close()
 
 
 # ---------------------------------------------------------------------------
