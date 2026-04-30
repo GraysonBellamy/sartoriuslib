@@ -1,5 +1,10 @@
 # sartoriuslib — Implementation Plan
 
+!!! note "Historical planning document"
+    This file is retained for implementation history. It was written when the
+    repository was still mostly scaffolded; the current API and behavior are
+    documented in the guide pages and the API reference.
+
 Phased roadmap for constructing `sartoriuslib` per [design.md](design.md) and
 [protocol.md](protocol.md), with alicatlib (`~/Documents/git/alicatlib/`) as
 the structural reference. Current state: ~95 stub files (~1,089 LOC), with the

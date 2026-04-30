@@ -6,9 +6,10 @@ the matching async context-manager methods. The in-tree sinks
 (:class:`~sartoriuslib.sinks.memory.InMemorySink`,
 :class:`~sartoriuslib.sinks.csv.CsvSink`,
 :class:`~sartoriuslib.sinks.jsonl.JsonlSink`,
-:class:`~sartoriuslib.sinks.sqlite.SqliteSink`) all satisfy this
-Protocol; third-party sinks can slot in without touching library
-code.
+:class:`~sartoriuslib.sinks.sqlite.SqliteSink`,
+:class:`~sartoriuslib.sinks.parquet.ParquetSink`, and
+:class:`~sartoriuslib.sinks.postgres.PostgresSink`) all satisfy this
+Protocol; third-party sinks can slot in without touching library code.
 
 :func:`pipe` is the v1 acquisition glue. It reads per-tick batches out
 of the recorder's receive stream, buffers them up to ``batch_size``

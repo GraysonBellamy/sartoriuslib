@@ -1,7 +1,9 @@
-"""Device-layer public surface.
+"""Device-layer package exports.
 
-Re-exports the enums, capability bitmap, and (once implemented) the
-:class:`Balance` facade and session machinery. See design doc §5 and §6.
+The subpackage root keeps a deliberately small re-export set for capability
+and session primitives. The :class:`Balance` facade, factory helpers, models,
+and discovery helpers live in their own submodules and are re-exported from
+top-level :mod:`sartoriuslib`.
 """
 
 from __future__ import annotations

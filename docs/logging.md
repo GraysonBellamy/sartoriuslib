@@ -7,7 +7,7 @@ two halves connect through `pipe()`. See [Design](design.md) §10.
 
 ## Recorder
 
-[`record(...)`](../src/sartoriuslib/streaming/recorder.py#L81) is an async
+[`record(...)`](../src/sartoriuslib/streaming/recorder.py) is an async
 context manager. It schedules ticks on absolute targets (drift-free) and
 yields a `Mapping[device_name, Sample]` per tick.
 
@@ -53,22 +53,22 @@ balance's per-tick result with timing metadata.
 | `received_at` | When the reply landed. |
 | `midpoint_at` | Half-way between the two — the canonical timestamp for plots. |
 | `elapsed_s` | Poll round-trip time. |
-| `protocol` | `ProtocolKind` of the active session. |
+| `protocol` | `Reading.protocol` on successful polls; on failed ticks, the protocol from `error.context.protocol` when available. |
 | `error` | The exception caught for this tick, else `None`. Per-tick errors are recorded, not raised — so a flaky device doesn't kill a long run. |
 
 ## `AcquisitionSummary`
 
-[`AcquisitionSummary`](api/streaming.md) is yielded by `record()` on exit
-and returned by `pipe()`.
+[`AcquisitionSummary`](api/streaming.md) is built and logged by `record()`
+when the producer exits, and returned directly by `pipe()`.
 
 | Field | Notes |
 | --- | --- |
 | `started_at` | Wall-clock at the first scheduled tick. |
 | `finished_at` | Wall-clock at producer shutdown. |
-| `samples_emitted` | Per-tick batches pushed onto the receive stream. |
+| `samples_emitted` | For recorder summaries, per-tick batches pushed onto the receive stream. For `pipe()` summaries, individual samples handed to the sink. |
 | `samples_late` | Ticks that missed their target slot or were dropped under the overflow policy. |
 | `max_drift_ms` | Largest observed positive drift of an emitted batch, in milliseconds. |
-| `target_total_samples` | Scheduled tick count for finite-duration recorder runs, or `None` for open-ended runs. Under overrun/drop conditions, `samples_emitted + samples_late` is the target-count invariant unless the caller exits early. |
+| `target_total_samples` | Scheduled tick count for finite-duration recorder runs, or `None` for open-ended runs and `pipe()` summaries. Under overrun/drop conditions, `samples_emitted + samples_late` is the recorder target-count invariant unless the caller exits early. |
 
 ## Sinks
 
@@ -100,7 +100,7 @@ Optional-extra sinks lazy-import their backend; importing
 
 ## `pipe(stream, sink)`
 
-[`pipe(...)`](../src/sartoriuslib/sinks/base.py#L166) is the v1
+[`pipe(...)`](../src/sartoriuslib/sinks/base.py) is the v1
 acquisition glue. It reads per-tick batches from the recorder, buffers
 them up to `batch_size` (or `flush_interval` seconds, whichever comes
 first), and calls `sink.write_many` to flush. On stream exhaustion it
@@ -118,8 +118,10 @@ print(f"{summary.samples_emitted} samples, {summary.samples_late} late")
 ## Row schema
 
 `sample_to_row(sample)` is the canonical flatten. Schema is stable across
-samples (locked on first batch) so mixed success/error rows don't
-narrow the schema.
+samples (locked on first batch) so mixed success/error rows don't narrow the
+schema. Tabular schema inference supports `float`, `int`, `str`, `bool`, and
+`None`; the canonical `Reading` flags still render as `0` / `1` for SQLite
+and CSV compatibility.
 
 | Column | Type | Notes |
 | --- | --- | --- |

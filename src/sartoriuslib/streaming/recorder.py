@@ -96,20 +96,26 @@ class OverflowPolicy(Enum):
 
 @dataclass(frozen=True, slots=True)
 class AcquisitionSummary:
-    """Per-run summary emitted after ``record()``'s CM exits.
+    """Acquisition totals produced by recorder and pipe drivers.
+
+    ``record()`` builds and logs one when its producer exits. ``pipe()``
+    returns one to the caller after flushing the stream into a sink.
 
     Attributes:
         started_at: Wall-clock at the first scheduled tick.
         finished_at: Wall-clock at producer shutdown.
         samples_emitted: Count of per-tick batches actually pushed
-            onto the receive stream.
+            onto the receive stream for recorder summaries, or
+            individual samples handed to the sink for ``pipe()``
+            summaries.
         samples_late: Count of ticks that missed their target slot
             (producer overran the previous tick, or overflow policy
             dropped the batch).
         max_drift_ms: Largest observed positive drift of an emitted
             batch relative to its absolute target, in milliseconds.
         target_total_samples: Number of scheduled ticks for finite
-            duration runs, or ``None`` for open-ended runs.
+            duration recorder runs, or ``None`` for open-ended runs
+            and ``pipe()`` summaries.
     """
 
     started_at: datetime

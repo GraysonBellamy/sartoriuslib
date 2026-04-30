@@ -68,7 +68,7 @@ def _column_type(spec: ColumnSpec) -> str:
     """Map a :class:`ColumnSpec` to a SQLite type affinity."""
     if spec.python_type is float:
         return "REAL"
-    if spec.python_type is int:
+    if spec.python_type in (int, bool):
         return "INTEGER"
     return "TEXT"
 
@@ -162,8 +162,10 @@ class SqliteSink:
         specs: list[ColumnSpec] = []
         for _cid, name, decl_type, notnull, _default, _pk in rows:
             upper = (decl_type or "").upper()
-            if "INT" in upper:
-                py_type: type = int
+            if "BOOL" in upper:
+                py_type: type = bool
+            elif "INT" in upper:
+                py_type = int
             elif any(token in upper for token in ("REAL", "FLOA", "DOUB")):
                 py_type = float
             else:

@@ -32,7 +32,7 @@ Family is decided by the model-string prefix:
 | `BCE*` | `BalanceFamily.BASIC_LAB` | Basic lab balances. MSE opcode subset, no Cubis extensions. |
 | anything else | `BalanceFamily.UNKNOWN` | First-class case — no priors, every call becomes a live probe. |
 
-[`classify_family(model)`](../src/sartoriuslib/devices/kind.py#L26) is the
+[`classify_family(model)`](../src/sartoriuslib/devices/kind.py) is the
 helper. Classification is case-insensitive and whitespace-tolerant.
 
 !!! note "All families ship in SBI from the factory"

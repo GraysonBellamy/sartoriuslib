@@ -139,8 +139,8 @@ Read SBN:              04 01 09 71 7f          len=4, op=0x71, chk=0x7F
 Reply (subtype 0x21):  04 41 21 00 66          len=4, subtype=0x21, body=00
 
 Read net weight:       04 01 09 1e 2c
-Reply (measurement):   0b 41 48 bb a3 d7 0a 3d 30 82 45 55
-                        len=11, subtype=0x48, 8-byte measurement body, chk=0x55
+Reply (measurement):   0b 41 48 bb a3 d7 0a 3d 30 82 45 07
+                        len=11, subtype=0x48, 8-byte measurement body, chk=0x07
 ```
 
 ## 4. Response subtype encoding
@@ -223,8 +223,8 @@ So the parameter-table entry at idx 0 has `(current=0x02, max=0x04)`.
 
 ### 5.3 `parse_tlv_sequence` helper
 
-The Python helper `sartoriustesting.protocol.parse_tlv_sequence(body)` walks a
-bytes object and yields `(tag, value_bytes)` tuples. To parse a multi-TLV
+The Python helper `sartoriuslib.protocol.xbpi.parse_tlv_sequence(body)` walks
+a bytes object and yields `(tag, value_bytes)` tuples. To parse a multi-TLV
 response body like above, prepend the subtype byte:
 
 ```python
@@ -854,16 +854,15 @@ since the last EEPROM clear.
   side effects — `0x59` and `0x5A` clear the xBPI 0x62 flag and bump
   `0xBA`. Including them in a sweep corrupts subsequent diffs with phantom
   "0x62 changes" caused by the tool itself, not the system under test. The
-  `sartoriustesting.cli.snapshot` tool excludes them from its wide sweep.
+  `sarto-diag sweep` command excludes them from its wide sweep by default.
 
 - **TLV-args-unlock writes:** many opcodes that err on no-args silently
   ACK (executing a write) when given TLV-21 args. An arg-diverse wide
   sweep that only skips the known-destructive no-args set is unsafe — an
   undocumented write register can push the balance into an overload state.
-  The SKIP list in [snapshot.py:254](src/sartoriustesting/cli/snapshot.py#L254)
-  covers every WZG-side-effecting op plus every empirically-identified
-  ACK-on-TLV unknown. Always run arg-diverse sweeps behind a recent
-  baseline so any residual state drift is visible on recovery.
+  `sarto-diag argfuzz` is therefore always behind the explicit destructive
+  acknowledgement gate. Always run arg-diverse sweeps behind a recent baseline
+  so any residual state drift is visible on recovery.
 
 - **Bootloader-drop risk on wide sweeps — SKIP list may be insufficient
   for unfamiliar balances:** a read-only no-args opcode sweep on a BCE3202
@@ -1330,16 +1329,12 @@ both those balances without incident, triggered the drop on BCE.
 
 ## 15. References
 
-- **This repository**: everything under `src/sartoriustesting/` — the Python
-  reference implementation of the findings documented here.
+- **This repository**: everything under `src/sartoriuslib/` — the Python
+  implementation of the findings documented here.
 - **WZG OEM weigh cell manual**: shipped with Sartorius WZG OEM weigh
   cells. A local copy lives at
   [datalab-output-Bilance_Tecniche_Sartorius_OEM_IP65_DS-WZG-e.md](datalab-output-Bilance_Tecniche_Sartorius_OEM_IP65_DS-WZG-e.md)
   in this project.
-- **Experiment playbook**: [EXPERIMENT_PLAYBOOK.md](EXPERIMENT_PLAYBOOK.md)
-  — runbook for the snapshot → toggle → diff workflow.
-- **Captured sessions**: `captures/` — JSONL and JSON files with raw xBPI
-  frames and decoded state snapshots from every experiment feeding into
-  this document. Organized by experiment: `paramdiff/vNN-<setting>/` for
-  menu-toggle captures, `acks/` for opcode-probe experiments, plus the
-  early `expN-*.jsonl` captures from initial frame-format discovery.
+- **Captured sessions**: `tests/fixtures/captures/` — promoted JSON, JSONL,
+  CSV, SQLite, and text fixtures with raw xBPI/SBI bytes and decoded state
+  snapshots that feed regression tests.

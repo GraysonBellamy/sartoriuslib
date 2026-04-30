@@ -1,11 +1,11 @@
 # Commands
 
-Every Sartorius command is one [`Command[Req, Resp]`](../src/sartoriuslib/commands/base.py#L107)
+Every Sartorius command is one [`Command[Req, Resp]`](../src/sartoriuslib/commands/base.py)
 spec — a frozen dataclass carrying metadata (name, family hints, capability
 hints, safety tier, optional firmware bounds) plus at most one variant per
 protocol. Per-protocol work lives on
-[`XbpiVariant`](../src/sartoriuslib/commands/base.py#L67) /
-[`SbiVariant`](../src/sartoriuslib/commands/base.py#L87) objects, not as
+[`XbpiVariant`](../src/sartoriuslib/commands/base.py) /
+[`SbiVariant`](../src/sartoriuslib/commands/base.py) objects, not as
 methods bolted onto `Command`. The session selects the variant matching the
 active protocol; if the selected variant is `None`, the call fails pre-I/O
 with `SartoriusProtocolUnsupportedError`. See [Design](design.md) §4.2.
@@ -24,13 +24,13 @@ from sartoriuslib.devices.capability import Capability, SafetyTier
 from sartoriuslib.devices.kind import BalanceFamily
 ```
 
-Key [`Command`](../src/sartoriuslib/commands/base.py#L107) fields:
+Key [`Command`](../src/sartoriuslib/commands/base.py) fields:
 
 | Field | Purpose |
 | --- | --- |
 | `name` | Python-friendly identifier; used in error context and probe-report keys. |
-| `xbpi` | [`XbpiVariant`](../src/sartoriuslib/commands/base.py#L67) carrying opcode + encode/decode, or `None` if the command is not defined for xBPI. |
-| `sbi` | [`SbiVariant`](../src/sartoriuslib/commands/base.py#L87) carrying ASCII token + encode/decode, or `None` if the command is not defined for SBI. |
+| `xbpi` | [`XbpiVariant`](../src/sartoriuslib/commands/base.py) carrying opcode + encode/decode, or `None` if the command is not defined for xBPI. |
+| `sbi` | [`SbiVariant`](../src/sartoriuslib/commands/base.py) carrying ASCII token + encode/decode, or `None` if the command is not defined for SBI. |
 | `family_hints` | Advisory `frozenset[BalanceFamily]` prior; empty = no prior. |
 | `capability_hints` | Advisory `Capability` flag; `Capability(0)` = no prior. |
 | `safety` | [`SafetyTier`](api/devices.md): `READ_ONLY`, `STATEFUL`, `PERSISTENT`, `DANGEROUS`. |

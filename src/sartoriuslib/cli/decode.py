@@ -7,11 +7,11 @@ report to stdout. No serial port is opened.
 
 Examples::
 
-    # The docs/protocol.md §3.3 worked example (typo'd checksum).
-    sarto-decode --xbpi 0b 41 48 bb a3 d7 0a 3d 30 82 45 55
-
-    # The same with the corrected checksum — the body decodes cleanly.
+    # The docs/protocol.md §3.3 worked example.
     sarto-decode --xbpi 0b 41 48 bb a3 d7 0a 3d 30 82 45 07
+
+    # A bad checksum is still decoded far enough to inspect the body.
+    sarto-decode --xbpi 0b 41 48 bb a3 d7 0a 3d 30 82 45 55
 
     # An SBI weight line.
     sarto-decode --sbi '+     0.00 g'

@@ -17,10 +17,10 @@ with Sartorius.open("/dev/ttyUSB0") as bal:
     bal.tare()
 ```
 
-[`Sartorius.open`](../src/sartoriuslib/sync/balance.py#L352) is a context
-manager that returns a [`SyncBalance`](../src/sartoriuslib/sync/balance.py#L53)
-wrapping the async [`Balance`](../src/sartoriuslib/devices/balance.py#L206).
-Same parameters as [`open_device`](../src/sartoriuslib/devices/factory.py#L34) —
+[`Sartorius.open`](../src/sartoriuslib/sync/balance.py) is a context
+manager that returns a [`SyncBalance`](../src/sartoriuslib/sync/balance.py)
+wrapping the async [`Balance`](../src/sartoriuslib/devices/balance.py).
+Same parameters as [`open_device`](../src/sartoriuslib/devices/factory.py) —
 `port`, `protocol`, `serial_settings`, `timeout`, `src_sbn`, `dst_sbn`,
 `strict`, `identify` — plus an optional `portal=` for sharing event loops.
 
@@ -45,14 +45,14 @@ with SyncSartoriusManager() as mgr:
     print(summary.samples_emitted, "samples written")
 ```
 
-[`SyncSartoriusManager`](../src/sartoriuslib/sync/manager.py#L44) is a plain
+[`SyncSartoriusManager`](../src/sartoriuslib/sync/manager.py) is a plain
 context manager that owns the shared portal and the wrapped async
-[`SartoriusManager`](../src/sartoriuslib/manager.py#L187). Port
+[`SartoriusManager`](../src/sartoriuslib/manager.py). Port
 canonicalisation and ref-counted port sharing are the manager's job, not
 the caller's.
 
-[`record()`](../src/sartoriuslib/sync/recording.py#L81) and
-[`pipe()`](../src/sartoriuslib/sync/recording.py#L113) mirror their async
+[`record()`](../src/sartoriuslib/sync/recording.py) and
+[`pipe()`](../src/sartoriuslib/sync/recording.py) mirror their async
 counterparts; the yielded `stream` is a blocking iterator of
 `Mapping[device_name, Sample]` batches. Drift-free absolute-target
 scheduling works the same way as the async recorder — see

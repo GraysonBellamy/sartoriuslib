@@ -276,7 +276,7 @@ class TestOpenDevice:
         assert transport.is_open is False
 
     @pytest.mark.anyio
-    async def test_aclose_is_idempotent(self) -> None:
+    async def test_close_is_idempotent(self) -> None:
         bal, transport = await _open_balance()
         await bal.close()
         await bal.close()

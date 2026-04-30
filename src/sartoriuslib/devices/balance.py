@@ -320,7 +320,9 @@ class Balance:
 
         ``mode="poll"`` is the default and requires ``rate_hz``.
         ``mode="autoprint"`` consumes existing SBI autoprint output without
-        changing device settings.
+        changing device settings. ``temporary_autoprint=True`` is reserved
+        for the future "enable on entry, restore on exit" SBI parameter flow
+        and currently raises :class:`NotImplementedError`.
         """
         from sartoriuslib.streaming.stream_session import StreamingSession  # noqa: PLC0415
 

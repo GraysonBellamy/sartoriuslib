@@ -13,9 +13,10 @@ and pluggable sinks.
 
 > **Status: alpha.** Architecture is frozen and the public API is stable.
 > Both protocol clients, the `Balance` facade, `SartoriusManager`, the
-> recorder, all first-party sinks, the sync facade, and the `sarto-*` CLIs
-> all ship in the base install. Hardware-coverage breadth and documentation
-> polish are the active work; see the [CHANGELOG](CHANGELOG.md).
+> recorder, first-party sink classes, the sync facade, and the `sarto-*`
+> CLIs ship in the base install. Parquet and Postgres sinks lazy-load their
+> optional backends. Hardware-coverage breadth and documentation polish are
+> the active work; see the [CHANGELOG](CHANGELOG.md).
 
 ## Highlights
 

@@ -323,3 +323,10 @@ class TestSchemaLock:
         lock = SchemaLock(sink_name="test", logger=logging.getLogger())
         lock.lock([{"a": 1}])
         assert lock.project({"a": 2, "extra": "dropped"}) == {"a": 2}
+
+    def test_bool_columns_stay_bool(self) -> None:
+        import logging
+
+        lock = SchemaLock(sink_name="test", logger=logging.getLogger())
+        columns = lock.lock([{"flag": True}, {"flag": False}])
+        assert columns[0].python_type is bool

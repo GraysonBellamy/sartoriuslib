@@ -68,9 +68,8 @@ class Sample:
             from a :class:`PollSource` that did not supply a protocol
             hint — in practice the manager always supplies one.
         metadata: Free-form per-sample annotations. Populated by
-            Phase-7 ``stream(mode=...)`` to record which streaming
-            mode produced the sample (``"poll"``, ``"autoprint"``,
-            ``"autoprint+temporary"``).
+            ``stream(mode=...)`` to record which streaming mode produced
+            the sample (``"poll"`` or ``"autoprint"``).
         error: The :class:`SartoriusError` captured on a failed poll,
             or ``None`` on success.
     """

@@ -3,9 +3,9 @@
 See design doc §7. All types are immutable (``frozen=True, slots=True``) so
 they are safe to share, pass across task boundaries, and log.
 
-``Reading`` and ``BalanceStatus`` are protocol-neutral: the xBPI decoder
-and the Phase-7 SBI decoder both build the same shape. That is the whole
-point of the dual-protocol seam (design §4).
+``Reading`` and ``BalanceStatus`` are protocol-neutral: the xBPI and SBI
+decoders both build the same shape. That is the whole point of the
+dual-protocol API (design §4).
 """
 
 from __future__ import annotations

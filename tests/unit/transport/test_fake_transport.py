@@ -15,7 +15,7 @@ _READ_SBN_REPLY = bytes.fromhex("04 41 21 00 66".replace(" ", ""))
 # Read net weight (request + reply, subtype 0x48 "measurement", 8-byte body).
 _READ_NET_REQ = bytes.fromhex("04 01 09 1e 2c".replace(" ", ""))
 _READ_NET_REPLY = bytes.fromhex(
-    "0b 41 48 bb a3 d7 0a 3d 30 82 45 55".replace(" ", ""),
+    "0b 41 48 bb a3 d7 0a 3d 30 82 45 07".replace(" ", ""),
 )
 # SBI print reply (ASCII, \r\n-terminated).
 _SBI_PRINT_LINE = b"+     0.00 g  \r\n"

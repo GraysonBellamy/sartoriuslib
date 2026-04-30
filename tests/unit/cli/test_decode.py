@@ -2,11 +2,9 @@
 
 The CLI is in-process by design (no hardware, no transport), so these
 tests drive :func:`sartoriuslib.cli.decode.main` directly and capture
-stdout via ``capsys``. The acceptance hex string from the
-implementation plan
-(``0b4148bba3d70a3d3082 45 55``) is the headline case — it includes
-the protocol-doc §3.3 typo'd checksum, and the CLI must surface the
-mismatch *and* still decode the (self-consistent) body.
+stdout via ``capsys``. The bad-checksum measurement fixture
+(``0b4148bba3d70a3d3082 45 55``) is the headline case: the CLI must
+surface the mismatch *and* still decode the self-consistent body.
 """
 
 from __future__ import annotations
@@ -21,7 +19,7 @@ from sartoriuslib.cli.decode import (
 
 
 class TestDecodeXbpi:
-    def test_acceptance_hex_with_typo_checksum_still_decodes(
+    def test_bad_checksum_still_decodes_body(
         self,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
@@ -33,8 +31,8 @@ class TestDecodeXbpi:
         # Checksum mismatch is surfaced.
         assert "INVALID" in out
         assert "expected 0x07" in out
-        # Body still decodes — the docs §3.3 example is self-consistent
-        # at -0.005 g except for the trailing checksum byte.
+        # Body still decodes because the measurement payload is
+        # self-consistent at -0.005 g except for the checksum byte.
         assert "value:    -0.005" in out
         assert "unit:     g" in out
         assert "sign:     negative" in out

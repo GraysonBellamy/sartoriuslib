@@ -13,11 +13,11 @@ for the architectural reference.
 
 #### Public API
 
-- `open_device(port, *, protocol=AUTO, ...)` and `open_balance` — async
+- `open_device(port, *, protocol=XBPI, ...)` and `open_balance` — async
   factory returning a `Balance` over a serial port or any duck-typed
   `Transport`. Supports `ProtocolKind.XBPI`, `ProtocolKind.SBI`, and
-  `ProtocolKind.AUTO` (passive autoprint sniff → xBPI `0x02` probe →
-  SBI `ESC x1_` probe → fail clearly).
+  opt-in `ProtocolKind.AUTO` (passive autoprint sniff → xBPI `0x02`
+  probe → SBI `ESC x1_` probe → fail clearly).
 - `Balance` facade — protocol-neutral surface across both wire
   protocols. Weight reads (`poll`, `read_net`, `read_gross`,
   `read_tare_value`), state ops (`tare`, `zero`, `status`,
@@ -152,7 +152,7 @@ for the architectural reference.
 
 ### Notes
 
-- `docs/protocol.md` §3.3 worked example `0b 41 48 bb a3 d7 0a 3d
-  30 82 45 55` has a checksum typo; the correct checksum for the
-  (self-consistent) -0.005 g body is `0x07`. Tests use the correct
-  value; the doc remains unchanged pending a separate docs pass.
+- `docs/protocol.md` §3.3 uses the corrected checksum `0x07` for the
+  worked measurement example. The decoder regression suite still covers
+  the previous bad-checksum fixture to ensure mismatches are reported
+  while the self-consistent body remains inspectable.

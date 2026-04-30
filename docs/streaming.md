@@ -20,7 +20,7 @@ async with await open_device("/dev/ttyUSB0") as bal:
             print(reading.value, reading.unit)
 ```
 
-[`Balance.stream(rate_hz=...)`](../src/sartoriuslib/devices/balance.py#L312)
+[`Balance.stream(rate_hz=...)`](../src/sartoriuslib/devices/balance.py)
 returns a [`StreamingSession`](../src/sartoriuslib/streaming/stream_session.py)
 — an async context manager and async iterator. Ticks fire on absolute
 targets (no drift accumulation) and the session never mutates device-side
@@ -111,8 +111,8 @@ anyio.run(main)
 `Mapping[device_name, Sample]` per tick. Each [`Sample`](api/streaming.md)
 carries the wrapped `Reading`, requested timestamp, received timestamp,
 elapsed seconds, protocol, and any per-device error caught during the
-tick. The yielded `AcquisitionSummary` totals samples emitted, ticks,
-drops, and timing stats.
+tick. The recorder logs its producer `AcquisitionSummary` on context exit;
+`pipe(...)` returns an `AcquisitionSummary` for the samples it wrote.
 
 See [Logging and acquisition](logging.md) for the full sink surface and
 [Design](design.md) §10 for scheduling and overflow policy.

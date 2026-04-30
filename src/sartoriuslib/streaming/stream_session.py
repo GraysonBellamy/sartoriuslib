@@ -34,7 +34,9 @@ class StreamingSession:
 
     ``mode="poll"`` performs request/response polling at an absolute cadence.
     ``mode="autoprint"`` consumes already-enabled SBI autoprint lines and
-    fails on entry if no line is available within ``timeout``.
+    fails on entry if no line is available within ``timeout``. The
+    ``temporary_autoprint=True`` path is reserved for a future persistent
+    SBI parameter-write flow and currently raises :class:`NotImplementedError`.
     """
 
     def __init__(

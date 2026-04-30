@@ -81,9 +81,8 @@ class CannedFrames:
     """Reference xBPI wire frames from real balances.
 
     Attribute values are TX/RX :class:`bytes` ready to drop into a
-    :class:`FakeTransport` script. RX frames use the correct checksum
-    (not the typo'd ``0x55`` from ``docs/protocol.md`` §3.3 — see
-    ``CHANGELOG.md``).
+    :class:`FakeTransport` script. RX frames use checksums validated by
+    :func:`sartoriuslib.protocol.xbpi.checksum`.
     """
 
     # TX — host→balance frames (assembled via build_command).
@@ -99,7 +98,6 @@ class CannedFrames:
 
     # RX — balance→host frames.
     #: docs/protocol.md §3.3 — empty-pan reading, -0.005 g stable negative.
-    #: Doc shows checksum 0x55 (typo); correct value is 0x07.
     RX_NET_WEIGHT_EMPTY_PAN: bytes = bytes.fromhex(
         "0b4148bba3d70a3d30824507",
     )

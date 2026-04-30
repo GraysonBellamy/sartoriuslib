@@ -10,7 +10,7 @@ facade and notes which fields are protocol-specific (i.e. `None` on one side).
 
 ## `Reading`
 
-[`Reading`](../src/sartoriuslib/devices/models.py#L62) is the canonical
+[`Reading`](../src/sartoriuslib/devices/models.py) is the canonical
 weight-reading shape. `xBPI 0x1E` decodes a measurement-frame body; SBI's
 `+     0.00 g  \r\n` autoprint or `ESC P` reply parses the same fields.
 
@@ -48,7 +48,7 @@ cleanly.
 
 ## `BalanceStatus`
 
-[`BalanceStatus`](../src/sartoriuslib/devices/models.py#L135) is the
+[`BalanceStatus`](../src/sartoriuslib/devices/models.py) is the
 status-block snapshot from xBPI `0x30` or the SBI equivalent.
 
 | Field | Type | Notes |
@@ -64,7 +64,7 @@ status-block snapshot from xBPI `0x30` or the SBI equivalent.
 
 ## `DeviceInfo`
 
-[`DeviceInfo`](../src/sartoriuslib/devices/models.py#L235) is the identity
+[`DeviceInfo`](../src/sartoriuslib/devices/models.py) is the identity
 snapshot produced by `Balance.identify()`.
 
 | Field | Type | Notes |
@@ -89,11 +89,11 @@ snapshot produced by `Balance.identify()`.
 
 | Type | Returned by | Notes |
 | --- | --- | --- |
-| [`Quantity`](../src/sartoriuslib/devices/models.py#L54) | `Balance.capacity()`, `Balance.increment()` | `value: float`, `unit: Unit`. |
-| [`TemperatureReading`](../src/sartoriuslib/devices/models.py#L157) | `Balance.temperature(sensor)` | `celsius` is `None` when the sensor index returns the `7f ff ff ff` sentinel. |
-| [`ParameterEntry`](../src/sartoriuslib/devices/models.py#L172) | `Balance.read_parameter(index)` | Raw `(current, max, raw)`. Typed accessors decode through the registry. |
-| [`CalRecord`](../src/sartoriuslib/devices/models.py#L188) | `Balance.last_cal_record()` | `has_metadata` distinguishes "never recorded" (post cold boot) from "valid record". |
-| [`ProbeOutcome`](../src/sartoriuslib/devices/models.py#L217) | per-capability entry on `DeviceInfo.probe_report` | `Availability` + `ProbeSource` + timestamp + human-readable detail. |
+| [`Quantity`](../src/sartoriuslib/devices/models.py) | `Balance.capacity()`, `Balance.increment()` | `value: float`, `unit: Unit`. |
+| [`TemperatureReading`](../src/sartoriuslib/devices/models.py) | `Balance.temperature(sensor)` | `celsius` is `None` when the sensor index returns the `7f ff ff ff` sentinel. |
+| [`ParameterEntry`](../src/sartoriuslib/devices/models.py) | `Balance.read_parameter(index)` | Raw `(current, max, raw)`. Typed accessors decode through the registry. |
+| [`CalRecord`](../src/sartoriuslib/devices/models.py) | `Balance.last_cal_record()` | `has_metadata` distinguishes "never recorded" (post cold boot) from "valid record". |
+| [`ProbeOutcome`](../src/sartoriuslib/devices/models.py) | per-capability entry on `DeviceInfo.probe_report` | `Availability` + `ProbeSource` + timestamp + human-readable detail. |
 | [`Sample`](../src/sartoriuslib/streaming/sample.py) | recorder yield | Wraps a `Reading` with device name, requested timestamp, elapsed time, error. See [Logging](logging.md). |
 
 ## Enums
@@ -102,13 +102,13 @@ snapshot produced by `Balance.identify()`.
 | --- | --- | --- |
 | `Unit` | [registry/units.py](../src/sartoriuslib/registry/units.py) | `G`, `KG`, `MG`, `LB`, `OZ`, `CT`, `N`, ... plus `UNKNOWN`. |
 | `Sign` | [registry/units.py](../src/sartoriuslib/registry/units.py) | `POSITIVE`, `NEGATIVE`, `ZERO`, `UNKNOWN`. |
-| `BalanceState` | [devices/models.py](../src/sartoriuslib/devices/models.py#L42) | `STABLE`, `UNSTABLE`, `OVERLOAD`, `UNDERLOAD`, `OFF`, `UNKNOWN`. |
+| `BalanceState` | [devices/models.py](../src/sartoriuslib/devices/models.py) | `STABLE`, `UNSTABLE`, `OVERLOAD`, `UNDERLOAD`, `OFF`, `UNKNOWN`. |
 | `ProtocolKind` | [protocol/base.py](../src/sartoriuslib/protocol/base.py) | `XBPI`, `SBI`, `AUTO`. |
-| `BalanceFamily` | [devices/kind.py](../src/sartoriuslib/devices/kind.py#L8) | `CUBIS`, `OEM_WEIGH_CELL`, `BASIC_LAB`, `UNKNOWN`. |
-| `Capability` | [devices/capability.py](../src/sartoriuslib/devices/capability.py#L11) | Flag bitmap — see [Balances](devices.md#capability-flags). |
-| `Availability` | [devices/capability.py](../src/sartoriuslib/devices/capability.py#L56) | `UNKNOWN`, `SUPPORTED`, `UNSUPPORTED`, `INAPPLICABLE`. |
-| `ProbeSource` | [devices/capability.py](../src/sartoriuslib/devices/capability.py#L75) | `FAMILY_TABLE`, `TARGETED_PROBE`, `LIVE_CALL`, `USER_OVERRIDE`. |
-| `SafetyTier` | [devices/capability.py](../src/sartoriuslib/devices/capability.py#L40) | `READ_ONLY`, `STATEFUL`, `PERSISTENT`, `DANGEROUS`. |
+| `BalanceFamily` | [devices/kind.py](../src/sartoriuslib/devices/kind.py) | `CUBIS`, `OEM_WEIGH_CELL`, `BASIC_LAB`, `UNKNOWN`. |
+| `Capability` | [devices/capability.py](../src/sartoriuslib/devices/capability.py) | Flag bitmap — see [Balances](devices.md#capability-flags). |
+| `Availability` | [devices/capability.py](../src/sartoriuslib/devices/capability.py) | `UNKNOWN`, `SUPPORTED`, `UNSUPPORTED`, `INAPPLICABLE`. |
+| `ProbeSource` | [devices/capability.py](../src/sartoriuslib/devices/capability.py) | `FAMILY_TABLE`, `TARGETED_PROBE`, `LIVE_CALL`, `USER_OVERRIDE`. |
+| `SafetyTier` | [devices/capability.py](../src/sartoriuslib/devices/capability.py) | `READ_ONLY`, `STATEFUL`, `PERSISTENT`, `DANGEROUS`. |
 
 Every enum that decodes protocol data carries an `UNKNOWN` member or
 otherwise preserves raw values so the library stays forward-compatible

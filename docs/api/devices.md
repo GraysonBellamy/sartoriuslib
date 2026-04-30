@@ -1,9 +1,11 @@
 # `sartoriuslib.devices`
 
-`Balance`, `Session`, the public dataclasses (`Reading`, `BalanceStatus`,
-`DeviceInfo`, …), `BalanceFamily`, `Capability`, `SafetyTier`,
-`open_device`, and discovery helpers. See [Balances](../devices.md),
-[Readings](../data-frames.md), and [Design](../design.md) §5–§7.
+Device-layer reference: direct package re-exports (`Session`,
+`BalanceFamily`, `Capability`, `SafetyTier`, …) plus the `Balance`
+facade, public dataclasses (`Reading`, `BalanceStatus`, `DeviceInfo`, …),
+factory helpers, and discovery helpers by submodule. See
+[Balances](../devices.md), [Readings](../data-frames.md), and
+[Design](../design.md) §5–§7.
 
 ## Public surface
 

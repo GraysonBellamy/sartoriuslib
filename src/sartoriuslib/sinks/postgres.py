@@ -88,6 +88,7 @@ _PG_NUMERIC_INT = frozenset(
         "smallint",
     },
 )
+_PG_BOOL = frozenset({"boolean"})
 
 
 def _validate_identifier(name: str, *, label: str) -> str:
@@ -108,6 +109,8 @@ def _column_type(spec: ColumnSpec) -> str:
         return "double precision"
     if spec.python_type is int:
         return "bigint"
+    if spec.python_type is bool:
+        return "boolean"
     return "text"
 
 
@@ -331,6 +334,8 @@ class PostgresSink:
                 py_type: type = float
             elif data_type in _PG_NUMERIC_INT:
                 py_type = int
+            elif data_type in _PG_BOOL:
+                py_type = bool
             else:
                 py_type = str
             specs.append(

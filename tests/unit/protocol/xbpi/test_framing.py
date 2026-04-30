@@ -1,8 +1,7 @@
 """Golden tests for the xBPI framing codec.
 
 Every fixture is traceable to ``docs/protocol.md`` §3.3 or to a
-real-world capture. Where the protocol doc has a byte-level typo (see
-``NOTE`` inline), the test uses the re-computed correct value.
+real-world capture.
 """
 
 from __future__ import annotations
@@ -111,10 +110,6 @@ class TestBuildCommand:
 
 # Fixtures from docs/protocol.md §3.3.
 _READ_SBN_REPLY = bytes.fromhex("04 41 21 00 66".replace(" ", ""))
-# NOTE: The §3.3 example `0b 41 48 bb a3 d7 0a 3d 30 82 45 55` has a
-# checksum typo — `0x55` should be `0x07` (sum & 0xFF of the preceding 11
-# bytes). The body bytes are consistent with the documented -0.005 g
-# empty-pan reading, so we use them verbatim and re-compute the checksum.
 _MEASUREMENT_REPLY = bytes.fromhex(
     "0b 41 48 bb a3 d7 0a 3d 30 82 45 07".replace(" ", ""),
 )

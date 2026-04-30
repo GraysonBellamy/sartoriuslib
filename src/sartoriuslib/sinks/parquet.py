@@ -209,6 +209,8 @@ class ParquetSink:
                 arrow_type = pa_module.float64()
             elif spec.python_type is int:
                 arrow_type = pa_module.int64()
+            elif spec.python_type is bool:
+                arrow_type = pa_module.bool_()
             else:
                 arrow_type = pa_module.string()
             # Every field is nullable: the schema-lock helper can't prove a

@@ -36,7 +36,7 @@ vars.
 
 ## `FakeTransport` — the canonical test double
 
-[`FakeTransport`](../src/sartoriuslib/transport/fake.py#L43) implements
+[`FakeTransport`](../src/sartoriuslib/transport/fake.py) implements
 the full [`Transport`](api/transport.md) protocol against an in-process
 script. The script maps write payloads to scripted replies; every
 write is recorded so tests can assert exactly what bytes the session
@@ -71,7 +71,7 @@ transport as-is.
 
 ## `canned_frames` — real wire frames
 
-[`canned_frames`](../src/sartoriuslib/testing.py#L80) is a singleton of
+[`canned_frames`](../src/sartoriuslib/testing.py) is a singleton of
 `CannedFrames` carrying byte-accurate TX/RX frames synthesised against
 the same checksum logic the protocol uses.
 
@@ -87,8 +87,9 @@ canned_frames.TX_READ_MODEL
 # ...
 ```
 
-RX frames carry the *correct* checksum (not the typo'd `0x55` that
-appears in some early documentation — see `CHANGELOG.md`).
+RX frames carry checksums validated by
+`sartoriuslib.protocol.xbpi.checksum`; the canned net-weight frame matches
+the worked example in [Wire protocol](protocol.md#33-worked-examples).
 
 ## Script builders
 

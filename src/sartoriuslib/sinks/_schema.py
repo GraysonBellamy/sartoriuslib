@@ -1,7 +1,7 @@
 """Shared first-batch schema-lock for tabular sinks.
 
-Every tabular sink in the tree (SQLite, and eventually Parquet /
-Postgres behind extras) shares the same schema-evolution policy:
+SQLite, Parquet, and Postgres share this schema-evolution helper. The CSV
+sink mirrors the same first-batch column policy locally:
 
 1. **First batch wins.** The column set and order are locked from the
    first :meth:`write_many` call. For schema-less sinks this is just
@@ -41,8 +41,9 @@ class ColumnSpec:
     Attributes:
         name: Column name, verbatim from the source row dict.
         python_type: Concrete Python scalar type backing the column —
-            one of :class:`float`, :class:`int`, :class:`str`. Sinks
-            translate this into their native type system.
+            one of :class:`float`, :class:`int`, :class:`str`, or
+            :class:`bool`. Sinks translate this into their native type
+            system.
         nullable: ``True`` if the first batch contained at least one
             ``None`` for this column, or if the column is entirely
             absent from some rows.
@@ -94,7 +95,8 @@ class SchemaLock:
         Column order is determined by first-encounter across the batch.
         Per-column type is inferred from the first non-``None`` value;
         when the batch mixes ``int`` and ``float`` for one column the
-        column widens to ``float``; any other mix widens to ``str``.
+        column widens to ``float``; ``bool`` stays ``bool`` only when
+        all non-null values are booleans; any other mix widens to ``str``.
 
         Columns entirely ``None`` in the first batch default to
         ``str`` / ``nullable=True``.
@@ -141,7 +143,7 @@ class SchemaLock:
         if inferred is None:
             inferred = str
             nullable = True
-        elif inferred not in (float, int, str):
+        elif inferred not in (float, int, str, bool):
             inferred = str
         return ColumnSpec(name=key, python_type=inferred, nullable=nullable)
 

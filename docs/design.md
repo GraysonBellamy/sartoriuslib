@@ -2,7 +2,7 @@
 
 ## 0. Scope
 
-`sartoriuslib` is a full public driver for Sartorius balances, parallel in shape and scope to `alicatlib`. It is **not** a scoped-down testing helper — it is meant to be imported, depended on, and used alongside `alicatlib` from quick scripts to production acquisition harnesses. This document lives in `sartoriustesting/` because that is the current reverse-engineering and validation workspace; the library itself will ship from a dedicated `sartoriuslib/` repository.
+`sartoriuslib` is a full public driver for Sartorius balances, parallel in shape and scope to `alicatlib`. It is **not** a scoped-down testing helper — it is meant to be imported, depended on, and used alongside `alicatlib` from quick scripts to production acquisition harnesses. This document is the architecture reference for the current `sartoriuslib` repository; reverse-engineering notes that used to live in the validation workspace have been folded into [Wire protocol](protocol.md), diagnostics CLIs, and fixture-backed tests.
 
 Design goals:
 
@@ -208,8 +208,9 @@ The session selects `cmd.xbpi` or `cmd.sbi` based on the active protocol; if the
 
 ### 4.3 Protocol selection on `open_device`
 
-- `protocol=ProtocolKind.AUTO` (default): open at the caller's serial settings → drain input → passively sniff a short window for SBI autoprint lines → probe xBPI with safe identity reads (opcode `0x02`) → probe SBI with an identify line → fail clearly if neither answers.
-- `protocol=ProtocolKind.XBPI` / `protocol=ProtocolKind.SBI`: force the wire protocol. Forced SBI still performs a short passive autoprint sniff because already-enabled autoprint is a different operating mode on the same line framing; the sniff never writes to the balance and queues any observed line for later consumption.
+- `protocol=ProtocolKind.XBPI` (default): force xBPI at the caller's serial settings. This matches the original xBPI-first driver surface and avoids surprising probe traffic for users who already configured the balance.
+- `protocol=ProtocolKind.SBI`: force SBI at the caller's serial settings. Forced SBI still performs a short passive autoprint sniff because already-enabled autoprint is a different operating mode on the same line framing; the sniff never writes to the balance and queues any observed line for later consumption.
+- `protocol=ProtocolKind.AUTO`: opt in to conservative detection at the caller's serial settings → drain input → passively sniff a short window for SBI autoprint lines → probe xBPI with safe identity reads (opcode `0x02`) → probe SBI with an identify line → fail clearly if neither answers.
 - `open_device` **never** changes the balance's protocol mode and **never** runs opcode sweeps, fuzzing, broad parameter probes, or wide baud/parity sweeps. Narrow-band serial auto-probing is an explicit discovery feature under `sarto-discover`, not part of `open_device`.
 - Protocol-mode switching (the WZA SBI→xBPI flip) lives behind `Balance.configure_protocol(...)` and `sarto-configure` as an explicit, `confirm=True`-gated operation, never as a side effect of open.
 
@@ -557,25 +558,26 @@ class Transport(Protocol):
     async def drain_input(self) -> None
 ```
 
-Implementations: `SerialTransport` (matching alicatlib's choice between pyserial/anyserial), `FakeTransport` for tests.
+Implementations: `SerialTransport` over `anyserial`, plus `FakeTransport` for tests.
 
 ### 8.2 `sartoriuslib.testing` — first-class public module
 
 Public API (parallel to alicatlib's `testing.py`):
 
 - `FakeTransport` — scripted request/response for unit tests.
-- `FakeTransportFromFixture(path)` — loads a wire-trace fixture file.
 - `parse_xbpi_fixture(text)` / `parse_sbi_fixture(text)` — fixture parsers.
 - `canned_frames` — reference xBPI frames from real balances ready to drop into tests.
-- `assert_command_bytes(...)`, `assert_reading_equal(...)` — matcher helpers.
-- fixture builders for managers and sync facades.
+- `build_identify_script(...)`, `build_metrology_script(...)`,
+  `build_temperature_script(...)`, `build_parameter_read_script(...)`,
+  `build_parameter_write_script(...)`, `build_sbi_identify_script(...)` —
+  ready-to-use scripted mappings for common session flows.
 
 xBPI fixture format:
 
 ```
 # xBPI fixture: read net weight
 > 04 01 09 1e 2c
-< 0b 41 48 bb a3 d7 0a 3d 30 82 45 55
+< 0b 41 48 bb a3 d7 0a 3d 30 82 45 07
 ```
 
 SBI fixture format:
@@ -586,7 +588,9 @@ SBI fixture format:
 < +     0.00 g
 ```
 
-The existing [captures/](captures/) directory converts directly to this format; [cli/decode.py](src/sartoriuslib/cli/decode.py) already understands xBPI wire bytes and can emit fixtures.
+Promoted captures live under [tests/fixtures/captures/](../tests/fixtures/captures/);
+[`sarto-decode`](../src/sartoriuslib/cli/decode.py) understands xBPI wire
+bytes and SBI lines offline.
 
 ## 9. Sync / async
 
@@ -620,20 +624,22 @@ async with record(balance_or_manager, rate_hz=10, duration=60) as stream:
         ...
 ```
 
-`Sample` fields: device name, `Reading`, requested timestamp, received timestamp, `monotonic_ns`, `elapsed_s`, protocol, error (if any). `AcquisitionSummary` returned on close carries totals, drops, and timing stats.
+`Sample` fields: device name, `Reading`, requested timestamp, received timestamp, midpoint timestamp, `monotonic_ns`, `elapsed_s`, protocol, metadata, error (if any). The recorder logs an `AcquisitionSummary` on close; `pipe(...)` returns an `AcquisitionSummary` with the number of samples handed to the sink.
 
 **Sinks** (parallel to alicatlib): `InMemorySink`, `CsvSink`, `JsonlSink`, `SqliteSink` in the base install; `ParquetSink`, `PostgresSink` behind extras. Schemas stay compatible with `alicatlib`'s where practical. Common schema fields:
 
 | Field | Notes |
 |---|---|
-| `timestamp` | wall-clock, ISO-8601 |
-| `device_name` | manager-assigned name |
+| `device` | manager-assigned name |
+| `requested_at` / `received_at` / `midpoint_at` | wall-clock, ISO-8601 |
+| `elapsed_s` | round-trip time for this sample |
 | `value` | nullable on overload/underload |
 | `unit` | from `Unit` enum |
-| `stable` | from `Reading.stable` |
+| `sign` | from `Sign` enum |
+| `stable` / `overload` / `underload` | from `Reading`; rendered as `0` / `1` in the canonical row helper |
+| `decimals` / `sequence` | protocol-derived counters when available |
 | `protocol` | `xbpi` / `sbi` |
-| `raw` | original frame/line, hex or str |
-| `elapsed_s` | round-trip time for this sample |
+| `raw` | original frame/line as hex |
 | `error_type` | fully qualified exception class on error, else null |
 | `error_message` | str of exception, else null |
 
@@ -646,7 +652,7 @@ Autoprint (parameter `p36` = `auto_wo` / `auto_w`) is a real capability, but sil
 
 - `stream(mode="poll", rate_hz=...)` — default; no device-side mutation.
 - `stream(mode="autoprint")` — consumes the device's *existing* autoprint output; fails if autoprint is not already enabled. No device-side mutation.
-- `stream(mode="autoprint", temporary_autoprint=True, confirm=True)` — configures `p36` on entry, restores the prior value on exit. Requires `confirm=True` because it mutates a persistent parameter. Restoration is best-effort and logged; if restoration fails (connection drop, etc.), the error is raised on context exit.
+- `stream(mode="autoprint", temporary_autoprint=True, confirm=True)` — planned persistent-parameter path that will configure `p36` on entry and restore the prior value on exit. In the current release it raises `NotImplementedError`; callers should enable autoprint on the balance and consume it with `mode="autoprint"`.
 
 Gated on `Capability.AUTO_OUTPUT`. The chosen mode is recorded on each `Sample.metadata`.
 
@@ -736,26 +742,19 @@ In addition to exceptions, the library emits `SartoriusCapabilityWarning` (a `Us
 
 - `sarto-diag snapshot`, `sarto-diag sweep`, `sarto-diag argfuzz`, `sarto-diag tap`, `sarto-diag stream` — the current [src/sartoriuslib/cli/](src/sartoriuslib/cli/) tools lifted forward. Not on the default install path; destructive operations require an explicit `--i-understand-this-is-destructive` flag. Never invoked from normal discovery or open.
 
-## 14. Mapping existing code into this structure
+## 14. Current Code Map
 
-Current `sartoriustesting/` tree → target `sartoriuslib/` tree. Reverse-engineering files **seed** the public package — they are refactored in place, not copied verbatim.
+The package now lives under `src/sartoriuslib/`. Earlier migration notes from
+the reverse-engineering workspace are kept only as historical context; the
+current module boundaries are:
 
-| Current | Target | Notes |
+| Area | Current modules | Notes |
 |---|---|---|
-| [src/sartoriuslib/frame.py](src/sartoriuslib/frame.py) | `protocol/xbpi/framing.py` + `protocol/xbpi/types.py` | rename `Frame` → `XbpiFrame`; keep `build_command` / `parse_frame` / `checksum` |
-| [src/sartoriuslib/protocol.py](src/sartoriuslib/protocol.py) | `protocol/xbpi/{tables,tlv,units,parser}.py` | split by concern; current file does four jobs |
-| [src/sartoriuslib/transport.py](src/sartoriuslib/transport.py) | `transport/serial.py` + `transport/base.py` | wrap behind `Transport` Protocol; switch to async; add `FakeTransport` under `transport/fake.py` |
-| [src/sartoriuslib/cli/decode.py](src/sartoriuslib/cli/decode.py) | `cli/decode.py` | stable `sarto-decode`, useful without hardware |
-| [src/sartoriuslib/cli/send.py](src/sartoriuslib/cli/send.py) | `cli/raw.py` | explicit raw command path |
-| [src/sartoriuslib/cli/](src/sartoriuslib/cli/) (snapshot/sweep/fuzz/tap) | `cli/diagnostics/` | RE namespace; never on the default install path |
-| current frame tests | `tests/unit/` protocol golden tests | preserve every captured-frame regression |
-| [tests/](tests/) | `tests/{unit,integration,fixtures}/` | split unit/integration; add fixture files |
-| [captures/](captures/) | `tests/fixtures/captures/` | convert stable captures to the §8.2 fixture format; keep exploratory captures separate |
-| — | `protocol/sbi/` | new: line codec, parser, command table |
-| — | `protocol/client.py`, `protocol/base.py` | `ProtocolClient` Protocol; xBPI + SBI impls |
-| — | `commands/`, `devices/`, `manager.py`, `sync/`, `streaming/`, `sinks/`, `registry/`, `testing.py`, `errors.py`, `firmware.py`, `config.py`, `maintenance.py` | direct alicatlib analogs |
-
-**Packaging drift to fix in the same cut.** The current [pyproject.toml](pyproject.toml) still names the project `sartoriustesting` while the package directory is `src/sartoriuslib/` and scripts are `sarto-*`. Before any tagged release, project metadata, package directory name, script entry points, and imports all have to agree. Doing this in the migration cut avoids a churn commit later.
+| Wire protocols | `protocol/base.py`, `protocol/client.py`, `protocol/detect.py`, `protocol/xbpi/*`, `protocol/sbi/*` | xBPI/SBI framing, parsers, clients, detection. |
+| Semantic API | `commands/*`, `devices/*`, `manager.py`, `maintenance.py` | Command specs, `Balance`, session gates, multi-device orchestration, confirmed maintenance. |
+| Acquisition | `streaming/*`, `sinks/*`, `sync/*` | Per-balance streams, recorder, async/sync sinks, sync facade. |
+| Support | `registry/*`, `testing.py`, `errors.py`, `firmware.py`, `config.py`, `cli/*` | Units/parameters, fixtures, typed errors, version parsing, config, stable and diagnostic CLIs. |
+| Tests and captures | `tests/unit`, `tests/integration`, `tests/fixtures/captures` | Protocol goldens, fixture regressions, fake transport, optional-backend sinks. |
 
 ## 15. Implementation slices
 

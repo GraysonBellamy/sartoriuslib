@@ -7,8 +7,8 @@ Covers:
 - Same-port serialisation via shared :class:`XbpiProtocolClient`.
 - Different ports run concurrently.
 - ``ErrorPolicy.RAISE`` vs ``ErrorPolicy.RETURN``.
-- ``DeviceResult.protocol`` carries the session's active protocol on
-  both success and error paths.
+- ``DeviceResult`` carries either a value or an error; protocol is read
+  from ``Reading.protocol`` or ``error.context.protocol`` by consumers.
 - ``execute(command, requests_by_name)`` dispatch.
 """
 

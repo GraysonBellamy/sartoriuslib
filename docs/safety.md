@@ -5,7 +5,7 @@ the [Design doc](design.md) §6.1 for the authoritative list.
 
 ## Per-command safety tier
 
-Every [`Command`](api/commands.md) carries a [`SafetyTier`](../src/sartoriuslib/devices/capability.py#L40):
+Every [`Command`](api/commands.md) carries a [`SafetyTier`](../src/sartoriuslib/devices/capability.py):
 
 | Tier | Examples | Gate |
 | --- | --- | --- |
