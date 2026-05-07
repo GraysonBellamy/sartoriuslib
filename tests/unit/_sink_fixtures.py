@@ -58,7 +58,7 @@ def make_sample(
             received_at=when,
             midpoint_at=when,
             monotonic_ns=0,
-            elapsed_s=0.001,
+            latency_s=0.001,
             protocol=ProtocolKind.XBPI,
             error=SartoriusTimeoutError("scripted failure"),
         )
@@ -69,6 +69,6 @@ def make_sample(
         received_at=when + timedelta(milliseconds=5),
         midpoint_at=when + timedelta(milliseconds=2),
         monotonic_ns=0,
-        elapsed_s=0.005,
+        latency_s=0.005,
         protocol=ProtocolKind.XBPI,
     )

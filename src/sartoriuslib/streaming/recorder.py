@@ -347,7 +347,7 @@ def _build_batch(
     fall back to ``None`` only when neither carries the hint (unusual).
     """
     midpoint = _midpoint(requested_at, received_at)
-    elapsed_s = (received_at - requested_at).total_seconds()
+    latency_s = (received_at - requested_at).total_seconds()
     mono = (sent_ns + recv_ns) // 2
     batch: dict[str, Sample] = {}
     for name, result in results.items():
@@ -377,7 +377,7 @@ def _build_batch(
             received_at=received_at,
             midpoint_at=midpoint,
             monotonic_ns=mono,
-            elapsed_s=elapsed_s,
+            latency_s=latency_s,
             protocol=protocol,
             error=error,
         )

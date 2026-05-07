@@ -123,7 +123,7 @@ class TestSample:
             received_at=now,
             midpoint_at=now,
             monotonic_ns=0,
-            elapsed_s=0.0,
+            latency_s=0.0,
             protocol=ProtocolKind.XBPI,
         )
         assert s.reading is r
@@ -139,7 +139,7 @@ class TestSample:
             received_at=now,
             midpoint_at=now,
             monotonic_ns=0,
-            elapsed_s=0.0,
+            latency_s=0.0,
             protocol=ProtocolKind.XBPI,
             error=err,
         )
@@ -167,7 +167,7 @@ class TestRecord:
             assert isinstance(batch["a"], Sample)
             assert batch["a"].reading is not None
             assert batch["a"].protocol is ProtocolKind.XBPI
-            assert batch["a"].elapsed_s >= 0.0
+            assert batch["a"].latency_s >= 0.0
 
     @pytest.mark.anyio
     async def test_record_rejects_invalid_rate(self) -> None:

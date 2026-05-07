@@ -193,8 +193,8 @@ def _sample_from_reading(
     *,
     mode: str,
 ) -> Sample:
-    elapsed = (received_at - requested_at).total_seconds()
-    midpoint_at = requested_at + timedelta(seconds=elapsed / 2.0)
+    latency = (received_at - requested_at).total_seconds()
+    midpoint_at = requested_at + timedelta(seconds=latency / 2.0)
     return Sample(
         device=device,
         reading=reading,
@@ -202,7 +202,7 @@ def _sample_from_reading(
         received_at=received_at,
         midpoint_at=midpoint_at,
         monotonic_ns=(start_ns + end_ns) // 2,
-        elapsed_s=elapsed,
+        latency_s=latency,
         protocol=reading.protocol,
         metadata={"mode": mode},
     )

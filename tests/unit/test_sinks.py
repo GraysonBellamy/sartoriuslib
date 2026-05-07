@@ -76,7 +76,7 @@ def _make_sample(device: str = "b1", *, error: bool = False) -> Sample:
             received_at=now,
             midpoint_at=now,
             monotonic_ns=0,
-            elapsed_s=0.001,
+            latency_s=0.001,
             protocol=ProtocolKind.XBPI,
             error=SartoriusTimeoutError("scripted failure"),
         )
@@ -87,7 +87,7 @@ def _make_sample(device: str = "b1", *, error: bool = False) -> Sample:
         received_at=now,
         midpoint_at=now,
         monotonic_ns=0,
-        elapsed_s=0.001,
+        latency_s=0.001,
         protocol=ProtocolKind.XBPI,
     )
 
@@ -111,7 +111,7 @@ class TestSampleToRow:
             "requested_at",
             "received_at",
             "midpoint_at",
-            "elapsed_s",
+            "latency_s",
             "value",
             "unit",
             "sign",

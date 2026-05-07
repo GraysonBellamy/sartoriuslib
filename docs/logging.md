@@ -52,7 +52,7 @@ balance's per-tick result with timing metadata.
 | `requested_at` | When the recorder scheduled the tick (wall-clock). |
 | `received_at` | When the reply landed. |
 | `midpoint_at` | Half-way between the two — the canonical timestamp for plots. |
-| `elapsed_s` | Poll round-trip time. |
+| `latency_s` | Poll round-trip time. |
 | `protocol` | `Reading.protocol` on successful polls; on failed ticks, the protocol from `error.context.protocol` when available. |
 | `error` | The exception caught for this tick, else `None`. Per-tick errors are recorded, not raised — so a flaky device doesn't kill a long run. |
 
@@ -127,7 +127,7 @@ and CSV compatibility.
 | --- | --- | --- |
 | `device` | str | Manager-assigned name. |
 | `requested_at` / `received_at` / `midpoint_at` | str (ISO 8601) | Wall-clock timing per tick. |
-| `elapsed_s` | float | Poll round-trip seconds. |
+| `latency_s` | float | Poll round-trip seconds. |
 | `value` | float \| null | `None` on overload/underload sentinel or on error rows. |
 | `unit` | str | From the `Unit` enum. |
 | `sign` | str | From `Sign`. |

@@ -4,7 +4,7 @@ A :class:`Sample` is what the recorder emits into its memory-object
 stream. It pairs a :class:`Reading` with enough timing to reconstruct
 the acquisition timeline: ``monotonic_ns`` for drift analysis,
 ``requested_at`` / ``received_at`` / ``midpoint_at`` for wall-clock
-provenance, and ``elapsed_s`` for per-sample latency checks.
+provenance, and ``latency_s`` for per-sample latency checks.
 
 The midpoint is the best point-estimate of the acquisition instant on
 the device: halfway between when the poll bytes left the host and
@@ -59,7 +59,7 @@ class Sample:
         monotonic_ns: :func:`time.monotonic_ns` at the read site. Used
             for scheduling / drift analysis only — never displayed,
             since the absolute value has no calendar meaning.
-        elapsed_s: ``(received_at - requested_at).total_seconds()`` —
+        latency_s: ``(received_at - requested_at).total_seconds()`` —
             precomputed for convenience.
         protocol: Which wire protocol produced this sample.
             Duplicates ``reading.protocol`` on successful polls and
@@ -80,7 +80,7 @@ class Sample:
     received_at: datetime
     midpoint_at: datetime
     monotonic_ns: int
-    elapsed_s: float
+    latency_s: float
     protocol: ProtocolKind | None
     metadata: Mapping[str, str] = field(default_factory=_empty_metadata)
     error: SartoriusError | None = None

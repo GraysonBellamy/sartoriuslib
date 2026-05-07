@@ -104,7 +104,7 @@ def sample_to_row(sample: Sample) -> dict[str, float | int | str | bool | None]:
 
     - ``device`` — manager-assigned name.
     - ``requested_at`` / ``received_at`` / ``midpoint_at`` — ISO 8601.
-    - ``elapsed_s`` — poll round-trip time, seconds.
+    - ``latency_s`` — poll round-trip time, seconds.
     - *reading fields* — from :meth:`Reading.as_dict`: ``value``,
       ``unit``, ``sign``, ``stable``, ``overload``, ``underload``,
       ``decimals``, ``sequence``, ``protocol``, ``raw``. On error
@@ -125,7 +125,7 @@ def sample_to_row(sample: Sample) -> dict[str, float | int | str | bool | None]:
         "requested_at": sample.requested_at.isoformat(),
         "received_at": sample.received_at.isoformat(),
         "midpoint_at": sample.midpoint_at.isoformat(),
-        "elapsed_s": sample.elapsed_s,
+        "latency_s": sample.latency_s,
     }
     reading = sample.reading
     if reading is not None:

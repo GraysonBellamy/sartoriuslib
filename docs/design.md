@@ -624,7 +624,7 @@ async with record(balance_or_manager, rate_hz=10, duration=60) as stream:
         ...
 ```
 
-`Sample` fields: device name, `Reading`, requested timestamp, received timestamp, midpoint timestamp, `monotonic_ns`, `elapsed_s`, protocol, metadata, error (if any). The recorder logs an `AcquisitionSummary` on close; `pipe(...)` returns an `AcquisitionSummary` with the number of samples handed to the sink.
+`Sample` fields: device name, `Reading`, requested timestamp, received timestamp, midpoint timestamp, `monotonic_ns`, `latency_s`, protocol, metadata, error (if any). The recorder logs an `AcquisitionSummary` on close; `pipe(...)` returns an `AcquisitionSummary` with the number of samples handed to the sink.
 
 **Sinks** (parallel to alicatlib): `InMemorySink`, `CsvSink`, `JsonlSink`, `SqliteSink` in the base install; `ParquetSink`, `PostgresSink` behind extras. Schemas stay compatible with `alicatlib`'s where practical. Common schema fields:
 
@@ -632,7 +632,7 @@ async with record(balance_or_manager, rate_hz=10, duration=60) as stream:
 |---|---|
 | `device` | manager-assigned name |
 | `requested_at` / `received_at` / `midpoint_at` | wall-clock, ISO-8601 |
-| `elapsed_s` | round-trip time for this sample |
+| `latency_s` | round-trip time for this sample |
 | `value` | nullable on overload/underload |
 | `unit` | from `Unit` enum |
 | `sign` | from `Sign` enum |

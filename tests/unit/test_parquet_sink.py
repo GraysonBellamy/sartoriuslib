@@ -109,7 +109,7 @@ class TestRoundTrip:
         table = pq.read_table(path)
         by_name = {f.name: f.type for f in table.schema}
         assert str(by_name["value"]) == "double"
-        assert str(by_name["elapsed_s"]) == "double"
+        assert str(by_name["latency_s"]) == "double"
         assert str(by_name["device"]) == "string"
         assert str(by_name["unit"]) == "string"
         assert str(by_name["protocol"]) == "string"
@@ -170,7 +170,7 @@ class TestSchemaLock:
             "device",
             "value",
             "unit",
-            "elapsed_s",
+            "latency_s",
             "protocol",
         }
 
