@@ -5,6 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-05-10
+
+### Changed
+
+- **Breaking**: `Balance.aclose()` → `Balance.close()` (and `Session.aclose()` →
+  `Session.close()`). Cross-package alignment with `nidaqlib`, `watlowlib`, and
+  `alicatlib`. `__aexit__`, sync façade, `SartoriusManager`, CLI, and tests
+  updated accordingly.
+- **Breaking**: `Sample.elapsed_s` → `Sample.latency_s` (sink row column
+  renamed to match). `ErrorContext.elapsed_s` is unchanged — it remains a
+  separate concept on `SartoriusError.context`.
+- **Breaking**: `DeviceResult.protocol` removed. The protocol is now sourced
+  from `result.error.context.protocol` on failure and `Reading.protocol` on
+  success; the streaming recorder resolves `Sample.protocol` from those same
+  fields.
+- Sink scalar type widened to include `bool` for cross-package consistency;
+  schema inference now maps `bool` correctly for `SqliteSink`, `ParquetSink`,
+  and `PostgresSink` (regression test added).
+
+### Added
+
+- `SartoriusError.with_context()` fluent enrichment, structured `__str__`, and
+  `ErrorContext.merged()` (alicatlib pattern). `ErrorContext.extra` is wrapped
+  in `MappingProxyType`.
+
+### Documentation
+
+- `open_device` documented as defaulting to `ProtocolKind.XBPI`; `AUTO` is
+  opt-in.
+- Replaced stale `aclose` / `DeviceResult.protocol` language with `close()`
+  and protocol-from-`Reading` / `error.context`.
+- Corrected the xBPI checksum example in `docs/protocol.md`.
+- Fixed recorder / `pipe()` `AcquisitionSummary` wording.
+- Refreshed architecture / testing references from the old RE workspace to
+  current `sartoriuslib` paths; removed brittle source-line anchors from
+  active docs.
+
+### Tooling
+
+- Dev-dependency bumps via Dependabot: `zensical` 0.0.36 → 0.0.40,
+  `hypothesis` 6.152.2 → 6.152.4, `mypy` 1.20.2 → 2.0.0.
+
+## [0.1.0] - 2026-04-25
+
 ### Added
 
 Initial release of `sartoriuslib` — an async-first Python driver for
