@@ -118,6 +118,10 @@ class DeviceResult[T]:
 _WINDOWS_DEVICE_PREFIX = "\\\\.\\"
 
 
+def _is_windows_platform() -> bool:
+    return sys.platform == "win32"
+
+
 def _canonical_port_key(port: str) -> str:
     r"""Collapse equivalent port names to a single key.
 
@@ -133,7 +137,7 @@ def _canonical_port_key(port: str) -> str:
     sources — those use :func:`id` as the key (the caller has already
     expressed ownership).
     """
-    if sys.platform == "win32":
+    if _is_windows_platform():
         return port.removeprefix(_WINDOWS_DEVICE_PREFIX).upper()
     return os.path.realpath(port) if Path(port).exists() else port
 

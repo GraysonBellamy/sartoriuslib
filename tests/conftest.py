@@ -9,8 +9,8 @@ scheduler.
 
 from __future__ import annotations
 
-import importlib.util
 import sys
+from importlib.util import find_spec
 from typing import TYPE_CHECKING
 
 import pytest
@@ -18,7 +18,7 @@ import pytest
 if TYPE_CHECKING:
     from _pytest.mark.structures import ParameterSet
 
-_UVLOOP_UNAVAILABLE = sys.platform == "win32" or importlib.util.find_spec("uvloop") is None
+_UVLOOP_UNAVAILABLE = sys.platform == "win32" or find_spec("uvloop") is None
 
 _PARAMS: list[ParameterSet] = [
     pytest.param(("asyncio", {"use_uvloop": False}), id="asyncio"),

@@ -34,6 +34,8 @@ from sartoriuslib.errors import (
 )
 
 if TYPE_CHECKING:
+    from types import ModuleType
+
     from anyserial import Parity, SerialPort, StopBits
 
     from sartoriuslib.transport.base import SerialSettings
@@ -57,7 +59,15 @@ def _port_open_error_types() -> tuple[type[BaseException], ...]:
         import termios  # noqa: PLC0415 — platform-gated optional import
     except ImportError:  # pragma: no cover — Windows has no termios module
         return (OSError,)
-    return (OSError, termios.error)
+    termios_error = _module_exception_type(termios, "error")
+    return (OSError, termios_error) if termios_error is not None else (OSError,)
+
+
+def _module_exception_type(module: ModuleType, name: str) -> type[BaseException] | None:
+    value: object = getattr(module, name, None)
+    if isinstance(value, type) and issubclass(value, BaseException):
+        return value
+    return None
 
 
 _PORT_OPEN_ERRORS: tuple[type[BaseException], ...] = _port_open_error_types()

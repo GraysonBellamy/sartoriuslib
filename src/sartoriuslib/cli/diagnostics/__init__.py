@@ -4,10 +4,11 @@
 ``--i-understand-this-is-destructive``. Never invoked from normal
 discovery or open. See design doc §13.
 
-Five subcommands under the ``sarto-diag`` namespace:
+Six subcommands under the ``sarto-diag`` namespace:
 
 - ``snapshot`` — read-only battery of every safe-listed xBPI opcode;
   capability-discovery aid.
+- ``jitter`` - read-only 50 Hz xBPI acquisition timing probe.
 - ``tap`` — passive line / byte capture; never writes.
 - ``stream`` — raw-byte capture for protocol work.
 - ``sweep`` — xBPI opcode sweep across a range; **destructive** —
@@ -17,6 +18,7 @@ Five subcommands under the ``sarto-diag`` namespace:
 Entry-point dispatcher::
 
     sarto-diag snapshot PORT [--out FILE]
+    sarto-diag jitter [PORT] [--duration 10] [--out FILE]
     sarto-diag tap PORT [--duration 5]
     sarto-diag stream PORT [--duration 5]
     sarto-diag sweep PORT --i-understand-this-is-destructive
@@ -53,7 +55,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "subcommand",
-        choices=("snapshot", "tap", "stream", "sweep", "argfuzz"),
+        choices=("snapshot", "jitter", "tap", "stream", "sweep", "argfuzz"),
         help="Diagnostic subcommand to run.",
     )
     parser.add_argument(
@@ -68,6 +70,10 @@ def main(argv: list[str] | None = None) -> int:
         from sartoriuslib.cli.diagnostics import snapshot  # noqa: PLC0415
 
         return snapshot.main(ns.rest)
+    if ns.subcommand == "jitter":
+        from sartoriuslib.cli.diagnostics import jitter  # noqa: PLC0415
+
+        return jitter.main(ns.rest)
     if ns.subcommand == "tap":
         from sartoriuslib.cli.diagnostics import tap  # noqa: PLC0415
 

@@ -77,7 +77,12 @@ _STOPBITS_BY_NUMBER: dict[int, StopBits] = {
 }
 
 
-def add_open_args(parser: argparse.ArgumentParser, *, port_required: bool = True) -> None:
+def add_open_args(
+    parser: argparse.ArgumentParser,
+    *,
+    port_required: bool = True,
+    protocol_default: str = "auto",
+) -> None:
     """Register the shared ``open_device`` arguments on ``parser``.
 
     ``port_required=False`` makes ``port`` optional — used by
@@ -109,11 +114,12 @@ def add_open_args(parser: argparse.ArgumentParser, *, port_required: bool = True
         default=None,
         help="Override the default 1 stop bit.",
     )
+    protocol_default_help = "auto-detect" if protocol_default == "auto" else protocol_default
     parser.add_argument(
         "--protocol",
         choices=("auto", "xbpi", "sbi"),
-        default="auto",
-        help="Wire protocol to speak (default: auto-detect).",
+        default=protocol_default,
+        help=f"Wire protocol to speak (default: {protocol_default_help}).",
     )
     parser.add_argument(
         "--timeout",

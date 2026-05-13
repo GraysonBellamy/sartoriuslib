@@ -1,8 +1,9 @@
 """``sarto-diag`` — diagnostics namespace tests.
 
-Covers all five subcommands plus the dispatcher:
+Covers all six subcommands plus the dispatcher:
 
 - snapshot — read-only opcode battery via ``--include`` and fixture.
+- jitter - read-only 50 Hz xBPI timing probe via fixture.
 - tap — line capture, driven via ``capture_lines`` core function with
   a pre-fed :class:`FakeTransport`.
 - stream — byte capture, driven via ``capture_bytes`` core function.
@@ -15,14 +16,16 @@ Covers all five subcommands plus the dispatcher:
 
 from __future__ import annotations
 
+import csv
 import json
+import struct
 from typing import TYPE_CHECKING
 
 import pytest
 
-from sartoriuslib.cli.diagnostics import argfuzz, snapshot, stream, sweep, tap
+from sartoriuslib.cli.diagnostics import argfuzz, jitter, snapshot, stream, sweep, tap
 from sartoriuslib.cli.diagnostics import main as diag_main
-from sartoriuslib.protocol.xbpi import build_command, encode_tlv
+from sartoriuslib.protocol.xbpi import build_command, checksum, encode_tlv
 from sartoriuslib.testing import FakeTransport, canned_frames
 
 if TYPE_CHECKING:
@@ -33,6 +36,18 @@ def _xbpi_fixture(text: str, tmp_path: Path, name: str = "diag.fixture") -> Path
     p = tmp_path / name
     p.write_text(text)
     return p
+
+
+def _xbpi_rx(subtype: int, body: bytes) -> bytes:
+    length = 1 + 1 + len(body) + 1
+    pre = bytes([length, 0x41, subtype]) + body
+    return pre + bytes([checksum(pre)])
+
+
+def _long_measurement_reply(*, sequence: int = 0x55) -> bytes:
+    short = struct.pack(">f", 199.995) + b"\x00\x30\x42\x40"
+    status = bytes([0x00, 0x00, 0x81, 0x88, 0x18, 0x10, 0x00, sequence])
+    return _xbpi_rx(0x48, short + b"\x48" + status)
 
 
 # ---------------------------------------------------------------------------
@@ -176,6 +191,113 @@ class TestStream:
         finally:
             await transport.close()
         assert captured.hex() == "0b4148bba3d70a3d30824507"
+
+
+# ---------------------------------------------------------------------------
+# jitter
+# ---------------------------------------------------------------------------
+
+
+class TestJitter:
+    def test_jitter_dispatcher_writes_csv_and_summary(
+        self,
+        tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        tx = build_command(0x1E, b"\x09\x30")
+        fixture = _xbpi_fixture(
+            f"> {tx.hex(' ')}\n< {_long_measurement_reply().hex(' ')}\n",
+            tmp_path,
+            name="jitter.fixture",
+        )
+        out = tmp_path / "jitter.csv"
+        summary = tmp_path / "jitter-summary.json"
+
+        rc = diag_main(
+            [
+                "jitter",
+                "placeholder",
+                "--fixture",
+                str(fixture),
+                "--protocol",
+                "xbpi",
+                "--rate",
+                "50",
+                "--duration",
+                "0.04",
+                "--timeout",
+                "0.05",
+                "--spin-ms",
+                "0.5",
+                "--out",
+                str(out),
+                "--summary-out",
+                str(summary),
+            ],
+        )
+
+        stdout = capsys.readouterr().out
+        assert rc == 0
+        assert "xBPI jitter acquisition complete" in stdout
+        with out.open(newline="") as f:
+            rows = list(csv.DictReader(f))
+        assert len(rows) == 2
+        assert rows[0]["sequence"] == str(0x55)
+        assert rows[0]["midpoint_jitter_ms"] == ""
+
+        payload = json.loads(summary.read_text())
+        assert payload["ok"] == 2
+        assert payload["errors"] == 0
+        assert payload["frame"] == "long"
+        assert payload["spin_ms"] == 0.5
+
+    def test_summary_counts_sequence_gaps(self) -> None:
+        samples = [
+            jitter.JitterSample(
+                index=0,
+                target_ns=0,
+                wake_ns=1_000_000,
+                requested_ns=2_000_000,
+                received_ns=7_000_000,
+                decoded=_decoded(sequence=1),
+                error=None,
+                error_type=None,
+            ),
+            jitter.JitterSample(
+                index=1,
+                target_ns=20_000_000,
+                wake_ns=21_500_000,
+                requested_ns=22_000_000,
+                received_ns=28_000_000,
+                decoded=_decoded(sequence=3),
+                error=None,
+                error_type=None,
+            ),
+        ]
+
+        summary = jitter.summarize_samples(samples, rate_hz=50.0, duration=0.04)
+
+        assert summary["attempts"] == 2
+        assert summary["ok"] == 2
+        assert summary["sequence_gaps"] == 1
+        assert summary["latency_over_period"] == 0
+
+
+def _decoded(*, sequence: int) -> jitter.JitterDecodedFrame:
+    return jitter.JitterDecodedFrame(
+        value=1.0,
+        unit="g",
+        sign="positive",
+        stable=True,
+        off_scale=False,
+        overload=False,
+        underload=False,
+        decimals=3,
+        sequence=sequence,
+        adc_trusted=True,
+        isocal_due=False,
+        raw="00",
+    )
 
 
 # ---------------------------------------------------------------------------

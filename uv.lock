@@ -20,14 +20,14 @@ wheels = [
 
 [[package]]
 name = "anyserial"
-version = "0.1.1"
+version = "0.1.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a2/5a/485128818f1a298db4449c28bfc3d0026cd97544930e3421bc30bdc183ea/anyserial-0.1.1.tar.gz", hash = "sha256:595157455650b9e03124cd63b83798220ff16dac27b1c0702d7c8808fba78edf", size = 231715, upload-time = "2026-04-16T18:04:43.782Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c4/db/fd539426d89b0b4b0e9fe3f3636b67019f200356e2b091356d297e4f2adb/anyserial-0.1.2.tar.gz", hash = "sha256:e17277a1ff894da4f8a7f9f03db68d47cb2035b373846651532e48d747ae5fac", size = 233844, upload-time = "2026-05-09T20:32:19.606Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a0/83/8bea36ba53d75e232ccbcec50be28fb01d9ac47bcf75b135dbc91f89e788/anyserial-0.1.1-py3-none-any.whl", hash = "sha256:95fffb8de68cda2f1837e3a63e909a8727aaf258af329a45dce57fea2ccccd19", size = 131604, upload-time = "2026-04-16T18:04:42.161Z" },
+    { url = "https://files.pythonhosted.org/packages/a1/d9/8ce9148e7b3a58dac17461b35a213939af3e4eaf1305cbb85a813a572b69/anyserial-0.1.2-py3-none-any.whl", hash = "sha256:81dc1a061a0aecf42395c8c073505e269c077824e80812026a82b25e719b4989", size = 131931, upload-time = "2026-05-09T20:32:18.078Z" },
 ]
 
 [[package]]
@@ -912,7 +912,7 @@ type = [
 [package.metadata]
 requires-dist = [
     { name = "anyio", specifier = ">=4.13" },
-    { name = "anyserial", specifier = ">=0.1,<0.2" },
+    { name = "anyserial", specifier = ">=0.1.2,<0.2" },
     { name = "asyncpg", marker = "extra == 'postgres'", specifier = ">=0.30" },
     { name = "mkdocstrings-python", marker = "extra == 'docs'", specifier = ">=1.12" },
     { name = "pyarrow", marker = "extra == 'parquet'", specifier = ">=16" },

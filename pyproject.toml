@@ -35,7 +35,7 @@ classifiers = [
 ]
 dependencies = [
     "anyio>=4.13",
-    "anyserial>=0.1,<0.2",
+    "anyserial>=0.1.2,<0.2",
 ]
 
 [project.optional-dependencies]
@@ -197,6 +197,7 @@ ignore = [
 # output writers — the writes happen after the device transport has closed,
 # so blocking briefly on a small file is acceptable in a CLI driver.
 "src/sartoriuslib/cli/diagnostics/argfuzz.py" = ["ASYNC109", "ASYNC240"]
+"src/sartoriuslib/cli/diagnostics/jitter.py" = ["ASYNC109", "ASYNC240"]
 "src/sartoriuslib/cli/diagnostics/snapshot.py" = ["ASYNC109", "ASYNC240"]
 "src/sartoriuslib/cli/diagnostics/stream.py" = ["ASYNC240"]
 "src/sartoriuslib/cli/diagnostics/sweep.py" = ["ASYNC109", "ASYNC240"]
