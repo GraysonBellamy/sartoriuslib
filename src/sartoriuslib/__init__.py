@@ -26,7 +26,13 @@ from sartoriuslib.devices import (
     SafetyTier,
 )
 from sartoriuslib.devices.balance import Balance
-from sartoriuslib.devices.discovery import DiscoveryResult, discover_port
+from sartoriuslib.devices.discovery import (
+    DEFAULT_DISCOVERY_BAUDRATES,
+    DiscoveryResult,
+    FindResult,
+    discover_port,
+    find_devices,
+)
 from sartoriuslib.devices.factory import open_balance, open_device
 from sartoriuslib.devices.models import (
     BalanceState,
@@ -92,6 +98,7 @@ from sartoriuslib.streaming import (
 from sartoriuslib.version import __version__
 
 __all__ = [
+    "DEFAULT_DISCOVERY_BAUDRATES",
     "AcquisitionSummary",
     "Availability",
     "Balance",
@@ -107,6 +114,7 @@ __all__ = [
     "DiscoveryResult",
     "ErrorContext",
     "ErrorPolicy",
+    "FindResult",
     "FirmwareVersion",
     "InvalidParameterIndexError",
     "InvalidSbnError",
@@ -156,6 +164,7 @@ __all__ = [
     "__version__",
     "detect_protocol",
     "discover_port",
+    "find_devices",
     "open_balance",
     "open_device",
     "record",

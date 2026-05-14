@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `find_devices()` — multi-port baudrate-sweep discovery helper plus
+  `DEFAULT_DISCOVERY_BAUDRATES` and `FindResult`. Mirrors
+  `alicatlib.find_devices` so multi-adapter consumers (capa's Setup-editor
+  Discover dialog, `capa hardware discover`) can render every adapter's
+  discovery rows uniformly. First hit per port wins; port-open failures
+  short-circuit remaining bauds; ports default to
+  `anyserial.list_serial_ports()`.
+
 ## [0.2.0] - 2026-05-10
 
 ### Changed

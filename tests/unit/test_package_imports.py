@@ -50,3 +50,19 @@ def test_error_context_defaults() -> None:
     assert isinstance(err.context, ErrorContext)
     assert err.context.command_name is None
     assert err.context.extra == {}
+
+
+def test_discovery_api_exported() -> None:
+    from sartoriuslib import (
+        DEFAULT_DISCOVERY_BAUDRATES,
+        DiscoveryResult,
+        FindResult,
+        discover_port,
+        find_devices,
+    )
+
+    assert 9600 in DEFAULT_DISCOVERY_BAUDRATES
+    assert callable(discover_port)
+    assert callable(find_devices)
+    assert DiscoveryResult.__name__ == "DiscoveryResult"
+    assert FindResult.__name__ == "FindResult"
