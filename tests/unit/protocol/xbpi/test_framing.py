@@ -150,7 +150,11 @@ class TestParseFrame:
         assert frame.body == b"\x05"
 
     def test_frame_too_short(self) -> None:
-        with pytest.raises(SartoriusFrameError, match="too short"):
+        # Underrun reclassifies as transient (unified spec §F): callers
+        # in the cold-open window retry without reopening.
+        from sartoriuslib.errors import SartoriusTransientTransportError
+
+        with pytest.raises(SartoriusTransientTransportError, match="too short"):
             parse_frame(b"\x03\x41\x00")  # missing chk
 
     def test_length_mismatch_short(self) -> None:
@@ -185,8 +189,15 @@ class TestParseFrame:
 
     @given(st.binary(min_size=0, max_size=3))
     def test_fuzz_too_short(self, data: bytes) -> None:
-        """Any buffer below the minimum frame size must raise, never crash."""
-        with pytest.raises(SartoriusFrameError):
+        """Any buffer below the minimum frame size must raise, never crash.
+
+        Underrun reclassifies as a transient — :class:`SartoriusFrameError`
+        is reserved for non-underrun corruption (bad marker, length
+        mismatch, bad checksum).
+        """
+        from sartoriuslib.errors import SartoriusTransientTransportError
+
+        with pytest.raises(SartoriusTransientTransportError):
             parse_frame(data)
 
 

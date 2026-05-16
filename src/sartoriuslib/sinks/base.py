@@ -100,10 +100,14 @@ class SampleSink(Protocol):
 def sample_to_row(sample: Sample) -> dict[str, float | int | str | bool | None]:
     """Flatten a :class:`Sample` into a single row dict for tabular sinks.
 
-    Schema layout (stable across samples; design §10):
+    Schema layout (stable across samples; design §10, unified spec §C):
 
     - ``device`` — manager-assigned name.
-    - ``requested_at`` / ``received_at`` / ``midpoint_at`` — ISO 8601.
+    - ``t_mono_ns`` — canonical monotonic acquisition timestamp.
+    - ``t_utc`` — wall-clock acquisition instant (ISO 8601).
+    - ``t_midpoint_mono_ns`` — integration-window midpoint (``None`` for
+      poll/autoprint samples).
+    - ``requested_at`` / ``received_at`` — ISO 8601 I/O provenance.
     - ``latency_s`` — poll round-trip time, seconds.
     - *reading fields* — from :meth:`Reading.as_dict`: ``value``,
       ``unit``, ``sign``, ``stable``, ``overload``, ``underload``,
@@ -122,9 +126,11 @@ def sample_to_row(sample: Sample) -> dict[str, float | int | str | bool | None]:
     """
     row: dict[str, float | int | str | bool | None] = {
         "device": sample.device,
+        "t_mono_ns": sample.t_mono_ns,
+        "t_utc": sample.t_utc.isoformat(),
+        "t_midpoint_mono_ns": sample.t_midpoint_mono_ns,
         "requested_at": sample.requested_at.isoformat(),
         "received_at": sample.received_at.isoformat(),
-        "midpoint_at": sample.midpoint_at.isoformat(),
         "latency_s": sample.latency_s,
     }
     reading = sample.reading

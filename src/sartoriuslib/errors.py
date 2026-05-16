@@ -53,6 +53,18 @@ class ErrorContext:
         if not isinstance(self.extra, MappingProxyType):
             object.__setattr__(self, "extra", MappingProxyType(dict(self.extra)))
 
+    @property
+    def address(self) -> int | None:
+        """Unified cross-library accessor for the device address.
+
+        For sartoriuslib this is the xBPI SBN address (``sbn_address``).
+        Consumers that work across sibling libraries (alicatlib, watlowlib,
+        nidaqlib) read ``ctx.address`` uniformly; sartorius-internal code
+        keeps using ``sbn_address`` because it carries protocol-layer
+        semantics.
+        """
+        return self.sbn_address
+
     def merged(self, **updates: Any) -> Self:
         """Return a new context with ``updates`` overlaid. Unknown keys go to ``extra``."""
         known: dict[str, Any] = {}
@@ -182,6 +194,19 @@ class SartoriusTimeoutError(SartoriusTransportError):
 
 class SartoriusConnectionError(SartoriusTransportError):
     """Could not open / lost the connection to the balance."""
+
+
+class SartoriusTransientTransportError(SartoriusTransportError):
+    """Transport-layer hiccup that is safe to retry without reopening.
+
+    Raised in the cold-open window when the device is still settling and
+    a read returns 0 bytes (transport layer) or the first frame arrives
+    short of ``MIN_FRAME_SIZE`` (protocol layer underrun). Callers may
+    retry the same operation up to 3 times before escalating to
+    :class:`SartoriusConnectionError`; :func:`sartoriuslib.open_device`
+    swallows up to 3 inside the first identify so cold-open is invisible
+    to most callers.
+    """
 
 
 # --- Protocol ------------------------------------------------------------
@@ -324,6 +349,7 @@ __all__ = [
     "SartoriusSinkSchemaError",
     "SartoriusSinkWriteError",
     "SartoriusTimeoutError",
+    "SartoriusTransientTransportError",
     "SartoriusTransportError",
     "SartoriusUnsupportedCommandError",
     "SartoriusValidationError",

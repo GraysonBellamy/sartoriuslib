@@ -5,6 +5,11 @@ logic in :func:`sartoriuslib.find_devices`. The wire-protocol detection
 is :func:`discover_port`'s job and is covered elsewhere — these tests
 stub ``discover_port`` at the module level so they exercise only the
 sweep semantics.
+
+After the unified-API migration ``find_devices`` returns one
+:class:`SartoriusDiscoveryResult` per probe attempt (port × baud),
+not one per port; the per-port fold lives behind
+:func:`summarize_discovery`.
 """
 
 from __future__ import annotations
@@ -16,14 +21,16 @@ import pytest
 
 from sartoriuslib import (
     DEFAULT_DISCOVERY_BAUDRATES,
-    FindResult,
+    DiscoveryResult,
+    DiscoverySummary,
     ProtocolKind,
     SartoriusConnectionError,
+    SartoriusDiscoveryResult,
     SartoriusError,
     find_devices,
+    summarize_discovery,
 )
 from sartoriuslib.devices import discovery as discovery_module
-from sartoriuslib.devices.discovery import DiscoveryResult
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -45,7 +52,7 @@ class _StubDiscoverPort:
         *,
         hits: dict[str, int] | None = None,
         autoprint_hits: dict[str, int] | None = None,
-        open_failures: dict[str, Exception] | None = None,
+        open_failures: dict[str, SartoriusError] | None = None,
     ) -> None:
         self.calls: list[_Probe] = []
         self._hits = hits or {}
@@ -61,39 +68,63 @@ class _StubDiscoverPort:
         sniff_window: float = 0.25,
         src_sbn: int = 0x01,
         dst_sbn: int = 0x09,
-    ) -> DiscoveryResult:
-        del timeout, sniff_window, src_sbn, dst_sbn
+    ) -> SartoriusDiscoveryResult:
+        del timeout, sniff_window, src_sbn
         assert isinstance(port, str), "find_devices passes string ports"
         assert serial_settings is not None, "find_devices supplies SerialSettings"
         baud = serial_settings.baudrate
         self.calls.append(_Probe(port=port, baudrate=baud))
         if port in self._open_failures:
-            raise self._open_failures[port]
-        if self._autoprint_hits.get(port) == baud:
-            return DiscoveryResult(
+            return SartoriusDiscoveryResult(
+                ok=False,
                 port=port,
+                address=None,
                 baudrate=baud,
+                protocol=None,
+                device_info=None,
+                error=self._open_failures[port],
+                elapsed_s=0.001,
                 parity=serial_settings.parity.value,
                 stopbits=int(serial_settings.stopbits.value),
+            )
+        if self._autoprint_hits.get(port) == baud:
+            return SartoriusDiscoveryResult(
+                ok=True,
+                port=port,
+                address=None,
+                baudrate=baud,
                 protocol=ProtocolKind.SBI,
+                device_info=None,
+                error=None,
+                elapsed_s=0.002,
+                parity=serial_settings.parity.value,
+                stopbits=int(serial_settings.stopbits.value),
                 autoprint_active=True,
             )
         if self._hits.get(port) == baud:
-            return DiscoveryResult(
+            return SartoriusDiscoveryResult(
+                ok=True,
                 port=port,
+                address=dst_sbn,
                 baudrate=baud,
+                protocol=ProtocolKind.XBPI,
+                device_info=None,
+                error=None,
+                elapsed_s=0.002,
                 parity=serial_settings.parity.value,
                 stopbits=int(serial_settings.stopbits.value),
-                protocol=ProtocolKind.XBPI,
-                autoprint_active=False,
             )
-        return DiscoveryResult(
+        return SartoriusDiscoveryResult(
+            ok=False,
             port=port,
+            address=None,
             baudrate=baud,
+            protocol=None,
+            device_info=None,
+            error=SartoriusError("no responsive device"),
+            elapsed_s=0.001,
             parity=serial_settings.parity.value,
             stopbits=int(serial_settings.stopbits.value),
-            protocol=None,
-            error="no responsive device",
         )
 
 
@@ -122,17 +153,12 @@ class TestFindDevicesHit:
             baudrates=(9600, 19200, 38400, 57600, 115200),
         )
 
-        assert results == [
-            FindResult(
-                port="COM1",
-                baudrate=57600,
-                protocol=ProtocolKind.XBPI,
-                ok=True,
-                autoprint_active=False,
-                error=None,
-            ),
-        ]
-        # Short-circuit on hit: 115200 should not be probed.
+        # First hit wins: four probes (3 misses + 1 hit).
+        assert len(results) == 4
+        assert results[-1].ok is True
+        assert results[-1].protocol is ProtocolKind.XBPI
+        assert results[-1].baudrate == 57600
+        # 115200 not probed.
         assert _bauds(stub.calls, "COM1") == [9600, 19200, 38400, 57600]
 
     @pytest.mark.anyio
@@ -154,7 +180,7 @@ class TestFindDevicesHit:
 
 class TestFindDevicesMiss:
     @pytest.mark.anyio
-    async def test_silent_port_returns_single_miss_at_last_baud(
+    async def test_silent_port_returns_one_row_per_baud(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -163,14 +189,11 @@ class TestFindDevicesMiss:
 
         results = await find_devices(ports=["COM1"], baudrates=(9600, 19200))
 
-        assert len(results) == 1
-        result = results[0]
-        assert result.ok is False
-        assert result.protocol is None
-        assert result.baudrate == 19200
-        # discover_port's per-baud error string is preserved as SartoriusError.
-        assert isinstance(result.error, SartoriusError)
-        # Every baud probed (no short-circuit on miss).
+        assert len(results) == 2
+        assert all(r.ok is False for r in results)
+        assert [r.baudrate for r in results] == [9600, 19200]
+        # Every baud carries a typed SartoriusError.
+        assert all(isinstance(r.error, SartoriusError) for r in results)
         assert _bauds(stub.calls, "COM1") == [9600, 19200]
 
 
@@ -212,13 +235,15 @@ class TestFindDevicesMultiPort:
             baudrates=(9600, 19200, 38400),
         )
 
-        assert len(results) == 2
-        assert results[0].port == "COM1"
-        assert results[0].ok is True
-        assert results[0].baudrate == 19200
-        assert results[1].port == "COM2"
-        assert results[1].ok is False
-        # COM1 stopped after the 19200 hit; COM2 swept every baud.
+        com1 = [r for r in results if r.port == "COM1"]
+        com2 = [r for r in results if r.port == "COM2"]
+        # COM1: 9600 miss + 19200 hit (first hit wins).
+        assert len(com1) == 2
+        assert com1[-1].ok is True
+        assert com1[-1].baudrate == 19200
+        # COM2: every baud probed, every one a miss.
+        assert len(com2) == 3
+        assert all(r.ok is False for r in com2)
         assert _bauds(stub.calls, "COM1") == [9600, 19200]
         assert _bauds(stub.calls, "COM2") == [9600, 19200, 38400]
 
@@ -249,7 +274,6 @@ class TestFindDevicesDefaults:
 
         await find_devices(ports=["COM1"])
 
-        # Order matters — the constant defines the sweep order.
         assert _bauds(stub.calls, "COM1") == list(DEFAULT_DISCOVERY_BAUDRATES)
 
     @pytest.mark.anyio
@@ -306,5 +330,40 @@ class TestFindDevicesPackageExports:
             57600,
             115200,
         )
-        assert sartoriuslib.FindResult is FindResult
         assert sartoriuslib.find_devices is find_devices
+        assert sartoriuslib.summarize_discovery is summarize_discovery
+        assert sartoriuslib.DiscoveryResult is DiscoveryResult
+        assert sartoriuslib.SartoriusDiscoveryResult is SartoriusDiscoveryResult
+        assert sartoriuslib.DiscoverySummary is DiscoverySummary
+
+
+class TestSummarizeDiscovery:
+    @pytest.mark.anyio
+    async def test_hit_summary_uses_winning_baud(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        stub = _StubDiscoverPort(hits={"COM1": 19200})
+        _install_stub(monkeypatch, stub)
+        results = await find_devices(ports=["COM1"], baudrates=(9600, 19200, 38400))
+        summaries = summarize_discovery(results)
+        assert len(summaries) == 1
+        s = summaries[0]
+        assert s.ok is True
+        assert s.baudrate == 19200
+        assert s.protocol is ProtocolKind.XBPI
+
+    @pytest.mark.anyio
+    async def test_miss_summary_carries_last_baud_and_first_error(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        stub = _StubDiscoverPort()
+        _install_stub(monkeypatch, stub)
+        results = await find_devices(ports=["COM1"], baudrates=(9600, 19200))
+        summaries = summarize_discovery(results)
+        assert len(summaries) == 1
+        s = summaries[0]
+        assert s.ok is False
+        assert s.baudrate == 19200  # last attempted
+        assert isinstance(s.error, SartoriusError)

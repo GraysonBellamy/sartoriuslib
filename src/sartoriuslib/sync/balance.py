@@ -23,7 +23,7 @@ from sartoriuslib.sync.portal import SyncPortal
 if TYPE_CHECKING:
     from collections.abc import Generator
 
-    from sartoriuslib.devices.balance import Balance
+    from sartoriuslib.devices.balance import Balance, SartoriusDeviceSnapshot
     from sartoriuslib.devices.models import (
         BalanceStatus,
         CalRecord,
@@ -122,6 +122,10 @@ class SyncBalance:
     def identify(self) -> DeviceInfo:
         """Blocking :meth:`Balance.identify`."""
         return self._portal.call(self._bal.identify)
+
+    def snapshot(self) -> SartoriusDeviceSnapshot:
+        """Blocking :meth:`Balance.snapshot`."""
+        return self._portal.call(self._bal.snapshot)
 
     # ------------------------------------------------------------------ metrology
 

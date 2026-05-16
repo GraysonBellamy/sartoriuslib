@@ -206,8 +206,8 @@ class TestSyncRecordAndSinks:
     def test_sync_record_collects_batches(self) -> None:
         with SyncSartoriusManager() as mgr:
             mgr.add("b1", FakeTransport(_poll_script()), timeout=0.1)
-            with record(mgr, rate_hz=20.0, duration=0.2) as stream:
-                batches = list(stream)
+            with record(mgr, rate_hz=20.0, duration=0.2) as recording:
+                batches = list(recording.stream)
         assert batches
         assert all("b1" in batch for batch in batches)
 
@@ -215,8 +215,8 @@ class TestSyncRecordAndSinks:
         with SyncSartoriusManager() as mgr:
             mgr.add("b1", FakeTransport(_poll_script()), timeout=0.1)
             with SyncInMemorySink(portal=mgr.portal) as sink:
-                with record(mgr, rate_hz=20.0, duration=0.2) as stream:
-                    summary = pipe(stream, sink)
+                with record(mgr, rate_hz=20.0, duration=0.2) as recording:
+                    summary = pipe(recording.stream, sink)
                 assert summary.samples_emitted >= 1
                 assert sink.samples
                 assert sink.samples[0].device == "b1"
@@ -227,9 +227,9 @@ class TestSyncRecordAndSinks:
             mgr.add("b1", FakeTransport(_poll_script()), timeout=0.1)
             with (
                 SyncCsvSink(path, portal=mgr.portal) as sink,
-                record(mgr, rate_hz=20.0, duration=0.15) as stream,
+                record(mgr, rate_hz=20.0, duration=0.15) as recording,
             ):
-                pipe(stream, sink)
+                pipe(recording.stream, sink)
         content = path.read_text(encoding="utf-8").splitlines()
         assert len(content) >= 2  # header + ≥1 row
         assert "device" in content[0]

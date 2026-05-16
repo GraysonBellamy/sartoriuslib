@@ -54,10 +54,10 @@ def make_sample(
         return Sample(
             device=device,
             reading=None,
+            t_mono_ns=0,
+            t_utc=when,
             requested_at=when,
             received_at=when,
-            midpoint_at=when,
-            monotonic_ns=0,
             latency_s=0.001,
             protocol=ProtocolKind.XBPI,
             error=SartoriusTimeoutError("scripted failure"),
@@ -65,10 +65,10 @@ def make_sample(
     return Sample(
         device=device,
         reading=make_reading(value=value, received_at=when),
+        t_mono_ns=0,
+        t_utc=when + timedelta(milliseconds=2),
         requested_at=when,
         received_at=when + timedelta(milliseconds=5),
-        midpoint_at=when + timedelta(milliseconds=2),
-        monotonic_ns=0,
         latency_s=0.005,
         protocol=ProtocolKind.XBPI,
     )

@@ -22,7 +22,11 @@ default). See ``docs/protocol.md`` §3.
 
 from __future__ import annotations
 
-from sartoriuslib.errors import ErrorContext, SartoriusFrameError
+from sartoriuslib.errors import (
+    ErrorContext,
+    SartoriusFrameError,
+    SartoriusTransientTransportError,
+)
 from sartoriuslib.protocol.xbpi.types import XbpiFrame
 
 __all__ = [
@@ -106,7 +110,13 @@ def parse_frame(data: bytes) -> XbpiFrame:
     """
     raw = bytes(data)
     if len(raw) < MIN_FRAME_SIZE:
-        raise SartoriusFrameError(
+        # Underrun reclassifies as a transient: the cold-open USB
+        # race surfaces here when the device drops the first byte or
+        # two of its reply. Callers (and ``open_device``'s identify
+        # retry loop) may retry without reopening. Non-underrun
+        # framing corruption — bad marker, length mismatch, bad
+        # checksum — stays under :class:`SartoriusFrameError` below.
+        raise SartoriusTransientTransportError(
             f"frame too short: got {len(raw)} bytes (min {MIN_FRAME_SIZE})",
             context=ErrorContext(raw_response=raw),
         )

@@ -127,9 +127,9 @@ async def _async_main(args: argparse.Namespace) -> int:
                 duration=args.duration,
                 overflow=overflow,
                 buffer_size=args.buffer_size,
-            ) as stream,
+            ) as recording,
         ):
-            summary = await pipe(stream, sink)
+            summary = await pipe(recording.stream, sink)
     sys.stdout.write(_format_summary(summary, out_path=args.out))
     return 0
 

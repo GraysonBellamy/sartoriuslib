@@ -7,9 +7,9 @@ balances without ``await``.
 Surfaces:
 
 * Balance / manager — :class:`Sartorius`, :class:`SyncBalance`,
-  :class:`SyncSartoriusManager` (+ :class:`SyncBalanceManager` alias,
-  :class:`ErrorPolicy` / :class:`DeviceResult` re-exports).
-* Recording — :func:`record`, :func:`pipe`,
+  :class:`SyncSartoriusManager` (:class:`ErrorPolicy` / :class:`DeviceResult`
+  re-exports).
+* Recording — :func:`record`, :func:`pipe`, :class:`Recording`,
   :class:`AcquisitionSummary`, :class:`OverflowPolicy`.
 * Sinks — :class:`SyncSinkAdapter` +
   :class:`SyncInMemorySink` / :class:`SyncCsvSink` /
@@ -27,13 +27,13 @@ from sartoriuslib.sync.balance import Sartorius, SyncBalance
 from sartoriuslib.sync.manager import (
     DeviceResult,
     ErrorPolicy,
-    SyncBalanceManager,
     SyncSartoriusManager,
 )
 from sartoriuslib.sync.portal import SyncPortal, run_sync
 from sartoriuslib.sync.recording import (
     AcquisitionSummary,
     OverflowPolicy,
+    Recording,
     pipe,
     record,
 )
@@ -54,9 +54,9 @@ __all__ = [
     "ErrorPolicy",
     "OverflowPolicy",
     "PostgresConfig",
+    "Recording",
     "Sartorius",
     "SyncBalance",
-    "SyncBalanceManager",
     "SyncCsvSink",
     "SyncInMemorySink",
     "SyncJsonlSink",

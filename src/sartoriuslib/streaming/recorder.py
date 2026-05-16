@@ -39,7 +39,7 @@ Design reference: ``docs/design.md`` §10.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -54,7 +54,7 @@ from sartoriuslib.protocol.base import ProtocolKind
 from sartoriuslib.streaming.sample import Sample
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, AsyncIterator, Sequence
+    from collections.abc import AsyncGenerator, Sequence
 
     from anyio.streams.memory import MemoryObjectSendStream
 
@@ -65,6 +65,7 @@ __all__ = [
     "AcquisitionSummary",
     "OverflowPolicy",
     "PollSource",
+    "Recording",
     "record",
 ]
 
@@ -94,16 +95,26 @@ class OverflowPolicy(Enum):
     """Evict the oldest queued batch, then enqueue. Counted as late."""
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class AcquisitionSummary:
-    """Acquisition totals produced by recorder and pipe drivers.
+    """Mutable acquisition totals owned by recorder / pipe drivers.
 
-    ``record()`` builds and logs one when its producer exits. ``pipe()``
-    returns one to the caller after flushing the stream into a sink.
+    The recorder is the **sole writer** — counters update in place
+    during the run so progress polling (TUIs, dashboards) works
+    without a separate API. Consumers MUST treat the summary as
+    read-only; mutating it from the consumer side is a contract
+    violation that will produce wrong totals on shutdown.
+
+    ``finished_at`` is ``None`` while the producer is running and is
+    set on context-manager exit.
+
+    Unified spec §M: every sibling library follows the same mutability
+    rule; the field set is library-specific.
 
     Attributes:
         started_at: Wall-clock at the first scheduled tick.
-        finished_at: Wall-clock at producer shutdown.
+        finished_at: Wall-clock at producer shutdown (``None`` until
+            then).
         samples_emitted: Count of per-tick batches actually pushed
             onto the receive stream for recorder summaries, or
             individual samples handed to the sink for ``pipe()``
@@ -119,11 +130,41 @@ class AcquisitionSummary:
     """
 
     started_at: datetime
-    finished_at: datetime
-    samples_emitted: int
-    samples_late: int
-    max_drift_ms: float
+    finished_at: datetime | None = None
+    samples_emitted: int = 0
+    samples_late: int = 0
+    max_drift_ms: float = 0.0
     target_total_samples: int | None = None
+
+
+@dataclass(slots=True)
+class Recording[T, StreamT = AsyncIterator[T]]:
+    """The context-manager payload returned by :func:`record`.
+
+    Bundles the per-tick stream, the live :class:`AcquisitionSummary`,
+    and the configured / observed rates so consumers can poll progress
+    without reaching into recorder internals. Cross-library spec §M:
+    every sibling library yields ``Recording[T]`` from its ``record``
+    CM; ``T`` is what the recorder actually emits per tick (for
+    sartoriuslib that's ``Mapping[str, Sample]``).
+
+    Attributes:
+        stream: The async iterator the recorder publishes per-tick
+            payloads into. Drain by ``async for batch in
+            recording.stream``.
+        summary: Live :class:`AcquisitionSummary`. Mutates in place;
+            ``summary.finished_at`` is set on CM exit.
+        rate_hz: Configured cadence the recorder is running at, as
+            passed to :func:`record`.
+        observed_rate_hz: Rolling mean inter-frame rate over the last
+            10 SBI autoprint frames. ``None`` until the buffer fills,
+            and ``None`` for non-autoprint runs.
+    """
+
+    stream: StreamT
+    summary: AcquisitionSummary
+    rate_hz: float
+    observed_rate_hz: float | None = None
 
 
 class PollSource(Protocol):
@@ -158,20 +199,24 @@ async def record(
     names: Sequence[str] | None = None,
     overflow: OverflowPolicy = OverflowPolicy.BLOCK,
     buffer_size: int = 64,
-) -> AsyncGenerator[AsyncIterator[Mapping[str, Sample]]]:
+) -> AsyncGenerator[Recording[Mapping[str, Sample], AsyncIterator[Mapping[str, Sample]]]]:
     """Record polled samples into a receive stream at an absolute cadence.
 
     Usage::
 
-        async with record(mgr, rate_hz=10, duration=60) as stream:
-            async for batch in stream:
+        async with record(mgr, rate_hz=10, duration=60) as recording:
+            async for batch in recording.stream:
                 process(batch)
+            print(recording.summary.samples_emitted)
 
-    The CM yields an async iterator of per-tick sample batches. Each
-    batch is a ``Mapping[name, Sample]`` — one entry per device that
+    The CM yields a :class:`Recording` whose :attr:`Recording.stream`
+    is an async iterator of per-tick sample batches. Each batch is a
+    ``Mapping[name, Sample]`` — one entry per device that
     participated on that tick. Successful polls produce a
     :class:`Sample` carrying a :class:`Reading`; failed polls produce
-    a :class:`Sample` with ``reading=None`` and ``error`` set.
+    a :class:`Sample` with ``reading=None`` and ``error`` set. The
+    bundled :attr:`Recording.summary` updates live during the run and
+    finalises (``finished_at`` set) on CM exit.
 
     Args:
         source: Any :class:`PollSource` (typically a
@@ -191,7 +236,7 @@ async def record(
         buffer_size: Receive-stream capacity, in per-tick batches.
 
     Yields:
-        An async iterator of per-tick ``Mapping[device_name, Sample]``.
+        A :class:`Recording` parameterised on ``Mapping[str, Sample]``.
 
     Raises:
         ValueError: If ``rate_hz <= 0`` or ``duration <= 0`` or
@@ -217,9 +262,17 @@ async def record(
     send_stream, receive_stream = anyio.create_memory_object_stream[Mapping[str, Sample]](
         max_buffer_size=buffer_size,
     )
-    stats = _RunStats()
 
     started_at = datetime.now(UTC)
+    summary = AcquisitionSummary(
+        started_at=started_at,
+        target_total_samples=total_ticks,
+    )
+    recording: Recording[Mapping[str, Sample], AsyncIterator[Mapping[str, Sample]]] = Recording(
+        stream=receive_stream,
+        summary=summary,
+        rate_hz=rate_hz,
+    )
     _logger.info(
         "recorder.start",
         extra={
@@ -240,22 +293,15 @@ async def record(
             total_ticks,
             names,
             overflow,
-            stats,
+            summary,
         )
         try:
-            yield receive_stream
+            yield recording
         finally:
             tg.cancel_scope.cancel()
 
     finished_at = datetime.now(UTC)
-    summary = AcquisitionSummary(
-        started_at=started_at,
-        finished_at=finished_at,
-        samples_emitted=stats.emitted,
-        samples_late=stats.late,
-        max_drift_ms=stats.max_drift_ms,
-        target_total_samples=total_ticks,
-    )
+    summary.finished_at = finished_at
     _logger.info(
         "recorder.stop",
         extra={
@@ -268,13 +314,6 @@ async def record(
     )
 
 
-@dataclass(slots=True)
-class _RunStats:
-    emitted: int = 0
-    late: int = 0
-    max_drift_ms: float = 0.0
-
-
 async def _run_producer(
     source: PollSource,
     send_stream: MemoryObjectSendStream[Mapping[str, Sample]],
@@ -282,7 +321,7 @@ async def _run_producer(
     total_ticks: int | None,
     names: Sequence[str] | None,
     overflow: OverflowPolicy,
-    stats: _RunStats,
+    summary: AcquisitionSummary,
 ) -> None:
     """Drive the absolute-cadence poll loop.
 
@@ -301,7 +340,7 @@ async def _run_producer(
                 missed = int((now - target) / period)
                 if total_ticks is not None:
                     missed = min(missed, total_ticks - tick)
-                stats.late += missed
+                summary.samples_late += missed
                 tick += missed
                 if total_ticks is not None and tick >= total_ticks:
                     break
@@ -319,9 +358,9 @@ async def _run_producer(
 
             drift_s = anyio.current_time() - target
             drift_ms = drift_s * 1_000.0
-            stats.max_drift_ms = max(stats.max_drift_ms, drift_ms)
+            summary.max_drift_ms = max(summary.max_drift_ms, drift_ms)
 
-            await _publish(send_stream, batch, overflow, stats)
+            await _publish(send_stream, batch, overflow, summary)
             tick += 1
     finally:
         await send_stream.aclose()
@@ -373,10 +412,10 @@ def _build_batch(
         batch[name] = Sample(
             device=name,
             reading=reading,
+            t_mono_ns=mono,
+            t_utc=midpoint,
             requested_at=requested_at,
             received_at=received_at,
-            midpoint_at=midpoint,
-            monotonic_ns=mono,
             latency_s=latency_s,
             protocol=protocol,
             error=error,
@@ -393,23 +432,23 @@ async def _publish(
     send_stream: MemoryObjectSendStream[Mapping[str, Sample]],
     batch: Mapping[str, Sample],
     overflow: OverflowPolicy,
-    stats: _RunStats,
+    summary: AcquisitionSummary,
 ) -> None:
     """Enqueue ``batch`` per the configured :class:`OverflowPolicy`."""
     if overflow is OverflowPolicy.BLOCK:
         await send_stream.send(batch)
-        stats.emitted += 1
+        summary.samples_emitted += 1
         return
     if overflow is OverflowPolicy.DROP_NEWEST:
         try:
             send_stream.send_nowait(batch)
         except anyio.WouldBlock:
-            stats.late += 1
+            summary.samples_late += 1
             _logger.warning(
                 "recorder.drop_newest",
                 extra={"policy": overflow.value, "reason": "consumer_backpressure"},
             )
             return
-        stats.emitted += 1
+        summary.samples_emitted += 1
         return
     raise AssertionError(f"unreachable overflow policy: {overflow!r}")

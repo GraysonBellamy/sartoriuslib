@@ -25,6 +25,7 @@ from sartoriuslib.streaming.recorder import (
     AcquisitionSummary,
     OverflowPolicy,
     PollSource,
+    Recording,
 )
 from sartoriuslib.streaming.recorder import (
     record as async_record,
@@ -34,7 +35,7 @@ from sartoriuslib.sync.portal import SyncAsyncIterator, SyncPortal
 from sartoriuslib.sync.sinks import SyncSinkAdapter
 
 if TYPE_CHECKING:
-    from collections.abc import Generator, Iterator, Mapping, Sequence
+    from collections.abc import AsyncIterator, Generator, Iterator, Mapping, Sequence
 
     from sartoriuslib.sinks.base import SampleSink
     from sartoriuslib.streaming.sample import Sample
@@ -42,6 +43,7 @@ if TYPE_CHECKING:
 __all__ = [
     "AcquisitionSummary",
     "OverflowPolicy",
+    "Recording",
     "pipe",
     "record",
 ]
@@ -87,12 +89,14 @@ def record(
     overflow: OverflowPolicy = OverflowPolicy.BLOCK,
     buffer_size: int = 64,
     portal: SyncPortal | None = None,
-) -> Generator[Iterator[Mapping[str, Sample]]]:
+) -> Generator[Recording[Mapping[str, Sample], Iterator[Mapping[str, Sample]]]]:
     """Sync :func:`sartoriuslib.streaming.record`.
 
-    If ``source`` is a :class:`SyncSartoriusManager`, its portal is
-    reused — the recorder and manager must share an event loop. Pass
-    ``portal=`` to override.
+    Yields a :class:`Recording` whose ``stream`` is a blocking iterator;
+    the bundled ``summary`` mutates in place while the producer is
+    running and is finalised on CM exit. If ``source`` is a
+    :class:`SyncSartoriusManager`, its portal is reused — the recorder
+    and manager must share an event loop. Pass ``portal=`` to override.
     """
     poll_source = _resolve_poll_source(source)
     with ExitStack() as stack:
@@ -105,9 +109,22 @@ def record(
             overflow=overflow,
             buffer_size=buffer_size,
         )
-        async_stream = stack.enter_context(active_portal.wrap_async_context_manager(async_cm))
-        sync_iter = stack.enter_context(active_portal.wrap_async_iter(async_stream))
-        yield sync_iter
+        async_recording: Recording[
+            Mapping[str, Sample],
+            AsyncIterator[Mapping[str, Sample]],
+        ] = stack.enter_context(active_portal.wrap_async_context_manager(async_cm))
+        sync_iter = stack.enter_context(
+            active_portal.wrap_async_iter(async_recording.stream),
+        )
+        # The sync recording shares the same live summary object —
+        # consumers polling ``recording.summary.samples_emitted`` see
+        # the same counter the async producer is updating.
+        yield Recording(
+            stream=sync_iter,
+            summary=async_recording.summary,
+            rate_hz=async_recording.rate_hz,
+            observed_rate_hz=async_recording.observed_rate_hz,
+        )
 
 
 def pipe(

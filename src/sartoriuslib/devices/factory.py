@@ -1,26 +1,38 @@
 """``open_device`` — primary async entry point for the library.
 
 Supports forced xBPI, forced SBI, and ``ProtocolKind.AUTO`` opens.
-``open_device`` is the name documented for cross-library uniformity
-with ``alicatlib``; :func:`open_balance` is a friendly alias.
+``open_device`` is the canonical name for cross-library uniformity
+with ``alicatlib``, ``watlowlib``, and ``nidaqlib`` (unified spec §A).
 
 The factory owns the transport's *construction* and wires it through
 the xBPI protocol client and the :class:`Session` into the returned
 :class:`Balance`. The balance's async-context-manager exit closes the
 transport. If any step between open and balance-construction fails,
 the factory closes the transport before propagating the exception.
+
+Cold-open USB races where the device drops the first byte or two of
+its reply surface as :class:`SartoriusTransientTransportError` (unified
+spec §F). :func:`open_device` swallows up to three such transients
+during the first identify with a 50 ms backoff so consumers do not
+need to know about cold-open at all. Post-open transients still
+surface to callers — the only invisibly-retried window is the open
+itself.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import anyio
+
 from sartoriuslib.devices.balance import Balance
 from sartoriuslib.devices.session import Session
 from sartoriuslib.errors import (
     ErrorContext,
     SartoriusAutoprintActiveError,
+    SartoriusConnectionError,
     SartoriusError,
+    SartoriusTransientTransportError,
     SartoriusValidationError,
 )
 from sartoriuslib.protocol.base import ProtocolKind
@@ -33,7 +45,14 @@ from sartoriuslib.transport.serial import SerialTransport
 if TYPE_CHECKING:
     from sartoriuslib.transport.base import Transport
 
-__all__ = ["open_balance", "open_device"]
+__all__ = ["open_device"]
+
+
+#: Maximum cold-open transients to swallow inside :func:`open_device`.
+_COLD_OPEN_MAX_RETRIES: int = 3
+
+#: Backoff between cold-open identify retries, in seconds.
+_COLD_OPEN_BACKOFF_S: float = 0.05
 
 
 async def open_device(
@@ -128,41 +147,57 @@ async def open_device(
                 ),
             )
         if identify:
-            await balance.identify()
+            await _identify_with_cold_open_retry(balance, session)
     except BaseException:
         await transport.close()
         raise
     return balance
 
 
-async def open_balance(
-    port: str | Transport,
-    *,
-    protocol: ProtocolKind = ProtocolKind.XBPI,
-    serial_settings: SerialSettings | None = None,
-    timeout: float = 1.0,
-    src_sbn: int = 0x01,
-    dst_sbn: int = 0x09,
-    strict: bool = False,
-    identify: bool = True,
-) -> Balance:
-    """Friendly alias for :func:`open_device`.
+async def _identify_with_cold_open_retry(balance: Balance, session: Session) -> None:
+    """Run identify, swallowing up to N cold-open transients.
 
-    Returns the same :class:`Balance` as :func:`open_device` with
-    identical arguments. ``open_device`` is documented as primary for
-    cross-library uniformity with ``alicatlib``; ``open_balance`` reads
-    more naturally inside the sartoriuslib namespace.
+    The cold-open window covers the first few reads on a freshly opened
+    USB serial port — the device may drop the first byte or two of its
+    reply, surfacing as :class:`SartoriusTransientTransportError`. The
+    open path retries inline (50 ms backoff) so callers never see
+    cold-open as a failure mode. Each retry increments
+    :attr:`Session.recoverable_error_count`.
+
+    After ``_COLD_OPEN_MAX_RETRIES`` consecutive transients we escalate
+    to :class:`SartoriusConnectionError` — at that point the device
+    really is not responding and the caller should know.
     """
-    return await open_device(
-        port,
-        protocol=protocol,
-        serial_settings=serial_settings,
-        timeout=timeout,
-        src_sbn=src_sbn,
-        dst_sbn=dst_sbn,
-        strict=strict,
-        identify=identify,
-    )
+    last_err: SartoriusTransientTransportError | None = None
+    for attempt in range(_COLD_OPEN_MAX_RETRIES + 1):
+        try:
+            await balance.identify()
+        except SartoriusTransientTransportError as exc:
+            session.record_recoverable_error()
+            last_err = exc
+            if attempt < _COLD_OPEN_MAX_RETRIES:
+                await anyio.sleep(_COLD_OPEN_BACKOFF_S)
+                continue
+            port_label = (
+                session.serial_settings.port if session.serial_settings is not None else None
+            )
+            raise SartoriusConnectionError(
+                f"identify failed after {_COLD_OPEN_MAX_RETRIES} cold-open retries: {exc}",
+                context=ErrorContext(
+                    command_name="open_device.identify",
+                    port=port_label,
+                    extra={
+                        "cold_open_attempts": _COLD_OPEN_MAX_RETRIES,
+                        "last_error": repr(exc),
+                    },
+                ),
+            ) from exc
+        else:
+            return
+    # Loop exit is only reached via ``return`` above (success) or
+    # ``raise`` (escalation). Re-raise as a defensive no-op guard.
+    if last_err is not None:  # pragma: no cover — unreachable
+        raise last_err
 
 
 def _resolve_transport(

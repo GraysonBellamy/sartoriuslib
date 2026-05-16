@@ -29,7 +29,6 @@ from sartoriuslib import (
     SartoriusError,
     SartoriusUnsupportedCommandError,
     Unit,
-    open_balance,
     open_device,
 )
 from sartoriuslib.commands.raw import SAFE_READ_ONLY_OPCODES
@@ -281,14 +280,6 @@ class TestOpenDevice:
         await bal.close()
         await bal.close()
         assert transport.is_open is False
-
-    @pytest.mark.anyio
-    async def test_open_balance_alias(self) -> None:
-        """``open_balance`` is a friendly alias for ``open_device``."""
-        transport = FakeTransport(_script_with_identify())
-        bal = await open_balance(transport, protocol=ProtocolKind.XBPI, timeout=0.1)
-        assert isinstance(bal, Balance)
-        await bal.close()
 
 
 # ---------------------------------------------------------------------------

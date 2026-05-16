@@ -29,7 +29,7 @@ from sartoriuslib.cli._common import (
 from sartoriuslib.devices.discovery import discover_port
 
 if TYPE_CHECKING:
-    from sartoriuslib.devices.discovery import DiscoveryResult
+    from sartoriuslib.devices.discovery import SartoriusDiscoveryResult
 
 __all__ = ["main"]
 
@@ -75,12 +75,13 @@ async def _async_main(args: argparse.Namespace) -> int:
     return 0 if result.ok else 2
 
 
-def _format_text(result: DiscoveryResult) -> str:
+def _format_text(result: SartoriusDiscoveryResult) -> str:
     lines = [
         f"port:        {result.port}",
         f"baudrate:    {result.baudrate}",
         f"parity:      {result.parity}",
         f"stopbits:    {result.stopbits}",
+        f"elapsed_s:   {result.elapsed_s:.3f}",
     ]
     if result.protocol is None:
         lines.append("protocol:    <none — no responsive device>")
@@ -88,6 +89,8 @@ def _format_text(result: DiscoveryResult) -> str:
             lines.append(f"error:       {result.error}")
     else:
         lines.append(f"protocol:    {result.protocol.value}")
+        if result.address is not None:
+            lines.append(f"address:     {result.address}")
         lines.append(f"autoprint:   {result.autoprint_active}")
         if result.pending_lines:
             lines.append(f"sniffed:     {len(result.pending_lines)} line(s)")
@@ -95,15 +98,18 @@ def _format_text(result: DiscoveryResult) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _format_json(result: DiscoveryResult) -> str:
+def _format_json(result: SartoriusDiscoveryResult) -> str:
     payload = {
+        "ok": result.ok,
         "port": result.port,
+        "address": result.address,
         "baudrate": result.baudrate,
         "parity": result.parity,
         "stopbits": result.stopbits,
         "protocol": result.protocol.value if result.protocol is not None else None,
         "autoprint_active": result.autoprint_active,
         "pending_lines": [line.decode("ascii", errors="replace") for line in result.pending_lines],
-        "error": result.error,
+        "error": str(result.error) if result.error is not None else None,
+        "elapsed_s": result.elapsed_s,
     }
     return json.dumps(payload, indent=2) + "\n"

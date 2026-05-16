@@ -72,10 +72,10 @@ def _make_sample(device: str = "b1", *, error: bool = False) -> Sample:
         return Sample(
             device=device,
             reading=None,
+            t_mono_ns=0,
+            t_utc=now,
             requested_at=now,
             received_at=now,
-            midpoint_at=now,
-            monotonic_ns=0,
             latency_s=0.001,
             protocol=ProtocolKind.XBPI,
             error=SartoriusTimeoutError("scripted failure"),
@@ -83,10 +83,10 @@ def _make_sample(device: str = "b1", *, error: bool = False) -> Sample:
     return Sample(
         device=device,
         reading=_make_reading(),
+        t_mono_ns=0,
+        t_utc=now,
         requested_at=now,
         received_at=now,
-        midpoint_at=now,
-        monotonic_ns=0,
         latency_s=0.001,
         protocol=ProtocolKind.XBPI,
     )
@@ -108,9 +108,11 @@ class TestSampleToRow:
         row = sample_to_row(_make_sample())
         expected_keys = {
             "device",
+            "t_mono_ns",
+            "t_utc",
+            "t_midpoint_mono_ns",
             "requested_at",
             "received_at",
-            "midpoint_at",
             "latency_s",
             "value",
             "unit",

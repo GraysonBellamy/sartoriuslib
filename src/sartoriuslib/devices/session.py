@@ -165,6 +165,12 @@ class Session:
         # and on any ``0xBA`` mismatch at read time (design §6.3).
         self._result_cache: dict[str, tuple[int, Any]] = {}
         self._state: SessionState = SessionState.OPERATIONAL
+        # Counter of recoverable errors the session has retried through
+        # transparently. Visible to consumers via the property of the same
+        # name and surfaced on :class:`DeviceSnapshot`. Incremented from
+        # :func:`open_device` cold-open retries and from any in-flight
+        # transient retry path the session implements.
+        self._recoverable_error_count: int = 0
         # Serial settings the transport was opened with. Tracked here
         # (not on the transport) so :meth:`Balance.configure_protocol`
         # can roll back to the original framing without coupling the
@@ -211,6 +217,27 @@ class Session:
     def state(self) -> SessionState:
         """Lifecycle state — ``BROKEN`` after a failed protocol/baud switch."""
         return self._state
+
+    @property
+    def recoverable_error_count(self) -> int:
+        """Number of recoverable errors swallowed-and-retried since open.
+
+        Bumped by :func:`sartoriuslib.open_device`'s cold-open identify
+        retry loop and by any other transparent retry path the session
+        runs. Resets to ``0`` only on a fresh :class:`Session`. Consumers
+        read it directly or via :class:`DeviceSnapshot.recoverable_error_count`.
+        """
+        return self._recoverable_error_count
+
+    def record_recoverable_error(self) -> None:
+        """Increment the recoverable-error counter.
+
+        Called from retry sites — :func:`sartoriuslib.open_device`'s
+        cold-open swallow loop, future inline transient retries. Public
+        because the counter is observed by :class:`DeviceSnapshot`;
+        callers should not normally mutate it.
+        """
+        self._recoverable_error_count += 1
 
     @property
     def transport(self) -> Transport:

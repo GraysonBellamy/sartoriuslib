@@ -28,7 +28,6 @@ from sartoriuslib import (
 )
 from sartoriuslib.commands.tare import TARE, TareRequest
 from sartoriuslib.manager import (
-    BalanceManager,
     DeviceResult,
     ErrorPolicy,
     SartoriusManager,
@@ -244,16 +243,6 @@ class TestExecute:
             await mgr.add("a", _build_fake_transport())
             with pytest.raises(SartoriusValidationError):
                 await mgr.execute(TARE, {"missing": TareRequest()})
-
-
-# ---------------------------------------------------------------------------
-# BalanceManager alias.
-# ---------------------------------------------------------------------------
-
-
-class TestAlias:
-    def test_balance_manager_aliases_sartorius_manager(self) -> None:
-        assert BalanceManager is SartoriusManager
 
 
 # ---------------------------------------------------------------------------

@@ -30,6 +30,7 @@ from sartoriuslib.errors import (
     ErrorContext,
     SartoriusConnectionError,
     SartoriusTimeoutError,
+    SartoriusTransientTransportError,
     SartoriusTransportError,
 )
 
@@ -212,10 +213,30 @@ class SerialTransport:
         except TimeoutError as exc:
             # Preserve whatever we did read — the next call may pick up where
             # this one left off once the device sends the rest.
+            received = len(buf)
             self._pushback.extend(buf)
+            if received == 0:
+                # Cold-open USB races land here: the device hasn't begun
+                # replying yet. Surface as a typed transient so callers
+                # (and ``open_device``'s identify retry loop) can retry
+                # without reopening the port. Non-zero partial reads keep
+                # the timeout classification because they represent a
+                # device that started speaking and then went silent —
+                # not the same root cause.
+                raise SartoriusTransientTransportError(
+                    f"read_exact({n}) on {self.label} got 0 bytes after {timeout}s",
+                    context=ErrorContext(
+                        port=self.label,
+                        extra={"phase": "read", "requested": n, "received": 0},
+                    ),
+                ) from exc
             raise SartoriusTimeoutError(
-                f"read_exact({n}) on {self.label} timed out after {timeout}s",
-                context=ErrorContext(port=self.label, extra={"phase": "read"}),
+                f"read_exact({n}) on {self.label} timed out after {timeout}s "
+                f"(got {received}/{n} bytes)",
+                context=ErrorContext(
+                    port=self.label,
+                    extra={"phase": "read", "requested": n, "received": received},
+                ),
             ) from exc
         except (SerialClosedError, SerialDisconnectedError) as exc:
             raise SartoriusConnectionError(

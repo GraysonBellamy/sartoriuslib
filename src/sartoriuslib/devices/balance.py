@@ -32,6 +32,8 @@ from __future__ import annotations
 import contextlib
 import dataclasses
 import warnings
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Final, Self, cast
 
 from sartoriuslib.commands.base import CommandContext
@@ -130,7 +132,66 @@ if TYPE_CHECKING:
     from sartoriuslib.transport.base import Parity, SerialSettings, StopBits, Transport
 
 
-__all__ = ["Balance"]
+__all__ = ["Balance", "DeviceSnapshot", "SartoriusDeviceSnapshot"]
+
+
+@dataclass(frozen=True, slots=True)
+class DeviceSnapshot:
+    """Cross-library identity + health snapshot.
+
+    Built from cached state — :meth:`Balance.snapshot` never performs
+    I/O. Sibling libraries (alicat, watlow, nidaq) expose the same
+    base shape per unified spec §H so multi-adapter consumers can
+    render every device's snapshot uniformly.
+
+    Attributes:
+        name: Device identifier (manager-style name; model fallback
+            when the balance is not under a manager).
+        model: Cached model string, or ``None`` if identify has not run.
+        firmware: Cached firmware version string, or ``None``.
+        serial: Cached serial / factory-number string, or ``None``.
+        connected: Whether the underlying session is operational.
+        last_error: Last error context the session attached to a
+            failure, or ``None`` when no failure has been observed.
+        recoverable_error_count: How many transient errors the session
+            has retried through transparently since open.
+        captured_at: Wall-clock instant the snapshot was taken (UTC,
+            tz-aware).
+    """
+
+    name: str
+    model: str | None
+    firmware: str | None
+    serial: str | None
+    connected: bool
+    last_error: ErrorContext | None
+    recoverable_error_count: int
+    captured_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class SartoriusDeviceSnapshot(DeviceSnapshot):
+    """Sartorius-typed snapshot extras.
+
+    Adds the family classification, capability bitmap, active protocol,
+    and last-observed mode (``None`` if mode has never been observed
+    on this session — :meth:`Balance.snapshot` does not probe to find
+    out, by design).
+
+    Attributes:
+        family: Cached :class:`BalanceFamily` classification.
+        capabilities: Bitmap of capabilities the session believes the
+            balance has.
+        protocol: Active wire protocol on the underlying session.
+        mode: Last-observed application mode if the session has tracked
+            one. ``None`` until something explicitly sets it; reserved
+            for future mode-aware streaming.
+    """
+
+    family: BalanceFamily | None
+    capabilities: Capability
+    protocol: ProtocolKind
+    mode: str | None
 
 
 #: Family-defaults capability **priors** (design §5.1).
@@ -253,6 +314,38 @@ class Balance:
     async def close(self) -> None:
         """Close the underlying transport. Idempotent."""
         await self._session.close()
+
+    async def snapshot(self) -> SartoriusDeviceSnapshot:
+        """Return a cached identity + health snapshot — **no I/O**.
+
+        Builds the snapshot from :attr:`info` (the cached
+        :class:`DeviceInfo`) and the underlying :class:`Session`
+        counters. Safe to call any time, including from a hot path —
+        the cost is the dataclass construction.
+
+        ``family``, ``capabilities``, ``protocol`` are sourced from the
+        session (so they reflect the live identity even when ``info``
+        is ``None``). ``mode`` is reserved for a future mode-tracking
+        hook; today it is always ``None`` (the snapshot is no-I/O by
+        contract, so it cannot probe).
+        """
+        info = self._info
+        session = self._session
+        name = info.model if info is not None else "balance"
+        return SartoriusDeviceSnapshot(
+            name=name,
+            model=info.model if info is not None else None,
+            firmware=str(info.firmware) if info is not None and info.firmware is not None else None,
+            serial=(info.serial if info is not None else None),
+            connected=session.state.value == "operational",
+            last_error=None,
+            recoverable_error_count=session.recoverable_error_count,
+            captured_at=datetime.now(UTC),
+            family=info.family if info is not None else session.family,
+            capabilities=info.capabilities if info is not None else session.capabilities,
+            protocol=session.active_protocol,
+            mode=None,
+        )
 
     async def refresh_sbi_autoprint_state(self, *, timeout: float | None = None) -> bool:
         """Re-sniff whether an SBI session is currently in autoprint mode.

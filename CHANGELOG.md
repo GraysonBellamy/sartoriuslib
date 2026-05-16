@@ -5,6 +5,88 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-05-15
+
+### Unified cross-library API (`UNIFIED_API_HANDOFF.md`)
+
+This release aligns sartoriuslib's public surface with the v1 unified
+cross-library spec shared with `alicatlib`, `watlowlib`, and `nidaqlib`.
+The clean-break rule applies: every renamed symbol is gone — no
+deprecation shims, no compatibility aliases.
+
+#### Breaking
+
+- **Removed** `open_balance(...)`. Use `open_device(...)`.
+- **Removed** `BalanceManager` alias. Use `SartoriusManager`. (Sync
+  facade: `SyncBalanceManager` removed; use `SyncSartoriusManager`.)
+- **Discovery types normalized.** `find_devices()` now returns one
+  `SartoriusDiscoveryResult` per **probe attempt** (port × baudrate),
+  not one per port. The result type matches the cross-library
+  `DiscoveryResult` base shape: `ok`, `port`, `address`, `baudrate`,
+  `protocol`, `device_info`, `error`, `elapsed_s`. Sartorius-specific
+  framing details (`parity`, `stopbits`, `autoprint_active`,
+  `pending_lines`) live on the `SartoriusDiscoveryResult` subclass.
+  The old per-port `FindResult` summary becomes `DiscoverySummary`,
+  exposed via the new `summarize_discovery(results)` helper.
+- **`Sample` timestamp contract.** Three canonical fields per spec §C:
+  `t_mono_ns` (was `monotonic_ns`), `t_utc` (was `midpoint_at`), plus a
+  new optional `t_midpoint_mono_ns`. I/O provenance fields
+  (`requested_at`, `received_at`, `latency_s`, `metadata`) are
+  unchanged. Sink column names in `sample_to_row` follow the rename.
+- **`record()` yields `Recording[T]`** instead of a bare async stream.
+  Consume `recording.stream` to iterate, `recording.summary` for the
+  live counters, `recording.rate_hz` / `recording.observed_rate_hz`
+  for the cadence (spec §M).
+- **`AcquisitionSummary` is mutable.** The recorder is the sole writer
+  and updates counters in place during the run. `finished_at` is
+  `None` until the context manager exits. Consumers must treat the
+  summary as read-only.
+- **`ErrorContext.address` property** added (returns `sbn_address`
+  unchanged). The native field stays `sbn_address`; the property is
+  the unified cross-lib accessor.
+
+#### Added
+
+- **`SartoriusTransientTransportError`** — new typed exception raised
+  on cold-open USB races. Replaces capa's string-matching workaround
+  for `"frame too short"` / `"got 0 bytes"`. Raised from two layers:
+  `transport/serial.py` (`read_exact` returns 0 bytes inside the
+  timeout window) and `protocol/xbpi/framing.py` (frame underrun
+  below `MIN_FRAME_SIZE`). `open_device()` swallows up to 3 such
+  transients on the first identify with a 50 ms backoff so consumers
+  never see cold-open as a failure mode; post-open transients still
+  surface to callers (spec §F).
+- **`DeviceResult.success(value)` / `.failure(error)`** classmethod
+  factories. Keyword construction still works (spec §E.0).
+- **`PollSourceAdapter`** — wrap a single `Balance` as a `PollSource`
+  for `record()`. Same class name across every sibling library; for
+  sartoriuslib the method signature is
+  `poll(names) -> Mapping[str, DeviceResult[Reading]]`. Replaces the
+  shim capa carried at `capa/src/capa/devices/sartorius.py` (spec §E).
+- **`Balance.snapshot()` → `SartoriusDeviceSnapshot`** — no-I/O
+  identity + health snapshot. Base `DeviceSnapshot` carries `name`,
+  `model`, `firmware`, `serial`, `connected`, `last_error`,
+  `recoverable_error_count`, `captured_at`; the subclass adds
+  `family`, `capabilities`, `protocol`, `mode` (spec §H).
+- **`Session.recoverable_error_count`** public counter that the open-
+  time retry loop and future inline retries bump on every transparently
+  retried error (spec §J).
+- **`sartoriuslib.units.to_pint(unit) -> str | None`** — free function
+  mapping every `Unit` enum value to a pint-compatible string, or
+  `None` for units pint can't model (Hong Kong tael, Austrian carat,
+  ...). `pint` is **not** a runtime dependency (spec §K).
+- **Top-level re-exports**: `sample_to_row`, `PollSourceAdapter`,
+  `Recording`, `DiscoverySummary`, `SartoriusDiscoveryResult`,
+  `SartoriusDeviceSnapshot`, `DeviceSnapshot`, `to_pint`,
+  `summarize_discovery`, `SartoriusTransientTransportError`.
+
+#### Tooling
+
+- Cross-lib import-symmetry smoke test
+  (`tests/unit/test_unified_api.py::TestCrossLibImportSymmetry`)
+  verifies every sibling library can advertise the same top-level
+  exports.
+
 ## [0.3.1] - 2026-05-14
 
 ### Added

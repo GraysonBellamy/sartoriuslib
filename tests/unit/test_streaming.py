@@ -119,10 +119,10 @@ class TestSample:
         s = Sample(
             device="b",
             reading=r,
+            t_mono_ns=0,
+            t_utc=now,
             requested_at=now,
             received_at=now,
-            midpoint_at=now,
-            monotonic_ns=0,
             latency_s=0.0,
             protocol=ProtocolKind.XBPI,
         )
@@ -135,10 +135,10 @@ class TestSample:
         s = Sample(
             device="b",
             reading=None,
+            t_mono_ns=0,
+            t_utc=now,
             requested_at=now,
             received_at=now,
-            midpoint_at=now,
-            monotonic_ns=0,
             latency_s=0.0,
             protocol=ProtocolKind.XBPI,
             error=err,
@@ -158,8 +158,8 @@ class TestRecord:
         source = _CountingPollSource()
         rate = 20.0
         duration = 0.25  # 5 ticks
-        async with record(source, rate_hz=rate, duration=duration) as stream:
-            batches = [batch async for batch in stream]
+        async with record(source, rate_hz=rate, duration=duration) as recording:
+            batches = [batch async for batch in recording.stream]
         assert len(batches) == source.calls
         assert len(batches) >= 4  # absolute scheduling — at least 4 of 5 slots
         for batch in batches:
@@ -193,8 +193,8 @@ class TestRecord:
     @pytest.mark.anyio
     async def test_record_error_sample_carries_error(self) -> None:
         source = _CountingPollSource(raise_for={"a"})
-        async with record(source, rate_hz=20.0, duration=0.1) as stream:
-            batches = [batch async for batch in stream]
+        async with record(source, rate_hz=20.0, duration=0.1) as recording:
+            batches = [batch async for batch in recording.stream]
         assert batches
         sample = batches[0]["a"]
         assert sample.reading is None
@@ -207,8 +207,8 @@ class TestRecord:
         # wall-clock boundaries should be ~period apart (allow 2x
         # slack on slow CI).
         source = _CountingPollSource()
-        async with record(source, rate_hz=50.0, duration=0.2) as stream:
-            batches = [batch async for batch in stream]
+        async with record(source, rate_hz=50.0, duration=0.2) as recording:
+            batches = [batch async for batch in recording.stream]
         assert len(batches) >= 5
         timings = [b["a"].requested_at for b in batches]
         deltas = [(timings[i + 1] - timings[i]).total_seconds() for i in range(len(timings) - 1)]
@@ -220,8 +220,8 @@ class TestRecord:
     @pytest.mark.anyio
     async def test_finite_record_overrun_stops_at_target_window(self) -> None:
         source = _SlowPollSource(delay_s=0.06)
-        async with record(source, rate_hz=100.0, duration=0.03) as stream:
-            batches = [batch async for batch in stream]
+        async with record(source, rate_hz=100.0, duration=0.03) as recording:
+            batches = [batch async for batch in recording.stream]
 
         assert len(batches) == 1
         assert source.calls == 1

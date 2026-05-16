@@ -13,6 +13,15 @@ variant selected at open time. Both protocols decode into the same frozen
 Core API is ``async`` (built on ``anyio``); a sync facade is available at
 :mod:`sartoriuslib.sync` for scripts, notebooks, and REPL use.
 
+The public surface tracks the cross-library unified API
+(``UNIFIED_API_HANDOFF.md``): ``open_device(...)``,
+:class:`SartoriusManager`, :func:`find_devices`, :class:`DiscoveryResult`
+(per-probe row) plus the sartorius-typed :class:`SartoriusDiscoveryResult`
+subclass, :class:`Sample` with the §C timestamp contract,
+:class:`DeviceResult` with ``success()`` / ``failure()`` factories,
+:class:`PollSourceAdapter`, :class:`Recording`, and
+:func:`sartoriuslib.units.to_pint`.
+
 See ``docs/design.md`` for the architectural design.
 """
 
@@ -25,15 +34,17 @@ from sartoriuslib.devices import (
     ProbeSource,
     SafetyTier,
 )
-from sartoriuslib.devices.balance import Balance
+from sartoriuslib.devices.balance import Balance, DeviceSnapshot, SartoriusDeviceSnapshot
 from sartoriuslib.devices.discovery import (
     DEFAULT_DISCOVERY_BAUDRATES,
     DiscoveryResult,
-    FindResult,
+    DiscoverySummary,
+    SartoriusDiscoveryResult,
     discover_port,
     find_devices,
+    summarize_discovery,
 )
-from sartoriuslib.devices.factory import open_balance, open_device
+from sartoriuslib.devices.factory import open_device
 from sartoriuslib.devices.models import (
     BalanceState,
     BalanceStatus,
@@ -71,6 +82,7 @@ from sartoriuslib.errors import (
     SartoriusSinkSchemaError,
     SartoriusSinkWriteError,
     SartoriusTimeoutError,
+    SartoriusTransientTransportError,
     SartoriusTransportError,
     SartoriusUnsupportedCommandError,
     SartoriusValidationError,
@@ -79,22 +91,25 @@ from sartoriuslib.errors import (
 )
 from sartoriuslib.firmware import FirmwareVersion
 from sartoriuslib.manager import (
-    BalanceManager,
     DeviceResult,
     ErrorPolicy,
     SartoriusManager,
 )
 from sartoriuslib.protocol import DetectionResult, ProtocolKind, detect_protocol
 from sartoriuslib.registry.units import Sign, Unit
+from sartoriuslib.sinks.base import sample_to_row
 from sartoriuslib.streaming import (
     AcquisitionSummary,
     OverflowPolicy,
     PollSource,
+    PollSourceAdapter,
+    Recording,
     Sample,
     StreamingSession,
     StreamMode,
     record,
 )
+from sartoriuslib.units import to_pint
 from sartoriuslib.version import __version__
 
 __all__ = [
@@ -103,7 +118,6 @@ __all__ = [
     "Availability",
     "Balance",
     "BalanceFamily",
-    "BalanceManager",
     "BalanceState",
     "BalanceStatus",
     "CalRecord",
@@ -111,21 +125,24 @@ __all__ = [
     "DetectionResult",
     "DeviceInfo",
     "DeviceResult",
+    "DeviceSnapshot",
     "DiscoveryResult",
+    "DiscoverySummary",
     "ErrorContext",
     "ErrorPolicy",
-    "FindResult",
     "FirmwareVersion",
     "InvalidParameterIndexError",
     "InvalidSbnError",
     "OverflowPolicy",
     "ParameterEntry",
     "PollSource",
+    "PollSourceAdapter",
     "ProbeOutcome",
     "ProbeSource",
     "ProtocolKind",
     "Quantity",
     "Reading",
+    "Recording",
     "SafetyTier",
     "Sample",
     "SartoriusAutoprintActiveError",
@@ -135,6 +152,8 @@ __all__ = [
     "SartoriusConfigurationError",
     "SartoriusConfirmationRequiredError",
     "SartoriusConnectionError",
+    "SartoriusDeviceSnapshot",
+    "SartoriusDiscoveryResult",
     "SartoriusError",
     "SartoriusFirmwareError",
     "SartoriusFrameError",
@@ -150,6 +169,7 @@ __all__ = [
     "SartoriusSinkSchemaError",
     "SartoriusSinkWriteError",
     "SartoriusTimeoutError",
+    "SartoriusTransientTransportError",
     "SartoriusTransportError",
     "SartoriusUnsupportedCommandError",
     "SartoriusValidationError",
@@ -165,7 +185,9 @@ __all__ = [
     "detect_protocol",
     "discover_port",
     "find_devices",
-    "open_balance",
     "open_device",
     "record",
+    "sample_to_row",
+    "summarize_discovery",
+    "to_pint",
 ]

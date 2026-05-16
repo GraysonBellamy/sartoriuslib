@@ -37,7 +37,7 @@ import sys
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Generic, Never, TypeVar
 
 import anyio
 
@@ -66,7 +66,6 @@ if TYPE_CHECKING:
     from sartoriuslib.transport.base import Transport
 
 __all__ = [
-    "BalanceManager",
     "DeviceResult",
     "ErrorPolicy",
     "SartoriusManager",
@@ -74,6 +73,8 @@ __all__ = [
 
 
 _logger = get_logger("manager")
+
+T_co = TypeVar("T_co", covariant=True)
 
 
 class ErrorPolicy(Enum):
@@ -91,7 +92,7 @@ class ErrorPolicy(Enum):
 
 
 @dataclass(frozen=True, slots=True)
-class DeviceResult[T]:
+class DeviceResult(Generic[T_co]):  # noqa: UP046 - explicit covariance is required here.
     """Per-device result container — value **or** error, never both.
 
     The protocol that produced the failure is available via
@@ -99,15 +100,31 @@ class DeviceResult[T]:
     keeping it off the result keeps the success-path representation
     clean and aligns with the ecosystem ``DeviceResult`` shape used by
     :mod:`alicatlib` and :mod:`watlowlib`.
+
+    Use the :meth:`success` / :meth:`failure` classmethod factories at
+    call sites that branch on success/failure — they make the intent
+    obvious. The keyword-construction path (``DeviceResult(value=v,
+    error=None)``) stays valid for internal call sites that already
+    know both fields.
     """
 
-    value: T | None
+    value: T_co | None
     error: SartoriusError | None
 
     @property
     def ok(self) -> bool:
         """``True`` when the balance produced a value (``error is None``)."""
         return self.error is None
+
+    @staticmethod
+    def success[U](value: U) -> DeviceResult[U]:
+        """Build a successful result wrapping ``value``."""
+        return DeviceResult(value=value, error=None)
+
+    @staticmethod
+    def failure(error: SartoriusError) -> DeviceResult[Never]:
+        """Build a failed result wrapping ``error``."""
+        return DeviceResult(value=None, error=error)
 
 
 # ---------------------------------------------------------------------------
@@ -663,10 +680,10 @@ class SartoriusManager:
                 try:
                     value: T = await op(balance)
                 except SartoriusError as err:
-                    results[member] = DeviceResult(value=None, error=err)
+                    results[member] = DeviceResult.failure(err)
                     errors.append(err)
                 else:
-                    results[member] = DeviceResult(value=value, error=None)
+                    results[member] = DeviceResult.success(value)
 
         async with anyio.create_task_group() as tg:
             for member_names in groups.values():
@@ -675,8 +692,3 @@ class SartoriusManager:
         if self._error_policy is ErrorPolicy.RAISE and errors:
             raise ExceptionGroup(f"manager.{label}: one or more balances failed", errors)
         return results
-
-
-# ``BalanceManager`` is a readable alias for ``SartoriusManager`` so
-# callers can pick whichever name reads better at the call site.
-BalanceManager = SartoriusManager

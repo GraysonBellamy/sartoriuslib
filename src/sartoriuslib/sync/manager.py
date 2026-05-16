@@ -36,7 +36,6 @@ if TYPE_CHECKING:
 __all__ = [
     "DeviceResult",
     "ErrorPolicy",
-    "SyncBalanceManager",
     "SyncSartoriusManager",
 ]
 
@@ -221,7 +220,3 @@ class SyncSartoriusManager:
         if mgr is None:
             raise RuntimeError("SyncSartoriusManager is not open")
         return mgr
-
-
-# Alias matching :data:`sartoriuslib.manager.BalanceManager`.
-SyncBalanceManager = SyncSartoriusManager

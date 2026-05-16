@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from sartoriuslib.streaming.poll_source import PollSourceAdapter
 from sartoriuslib.streaming.recorder import (
     AcquisitionSummary,
     OverflowPolicy,
     PollSource,
+    Recording,
     record,
 )
 from sartoriuslib.streaming.sample import Sample
@@ -15,6 +17,8 @@ __all__ = [
     "AcquisitionSummary",
     "OverflowPolicy",
     "PollSource",
+    "PollSourceAdapter",
+    "Recording",
     "Sample",
     "StreamMode",
     "StreamingSession",
