@@ -1,7 +1,7 @@
 [project]
 site_name = "sartoriuslib"
 site_description = "Python library for Sartorius balances (xBPI and SBI over serial)."
-site_url = "https://GraysonBellamy.github.io/sartoriuslib/"
+site_url = "https://graysonbellamy.github.io/sartoriuslib/"
 repo_url = "https://github.com/GraysonBellamy/sartoriuslib"
 repo_name = "GraysonBellamy/sartoriuslib"
 edit_uri = "edit/main/docs/"
