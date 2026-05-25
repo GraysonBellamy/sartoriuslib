@@ -1,3 +1,7 @@
+---
+description: Troubleshooting Sartorius balance connections — factory protocol defaults (SBI on every family), serial mis-config, autoprint surprises, and the typed error hierarchy.
+---
+
 # Troubleshooting
 
 This page collects the failure modes that come up first in the field —

@@ -1,3 +1,7 @@
+---
+description: Reverse-engineered reference for the Sartorius xBPI binary protocol — framing, checksums, SBN addressing, opcode tables, and capture analysis across CUBIS, OEM weigh cell, and basic-lab balances.
+---
+
 # Sartorius xBPI Protocol — Reverse-Engineered Reference
 
 A reference to the Sartorius xBPI binary protocol, reverse engineered

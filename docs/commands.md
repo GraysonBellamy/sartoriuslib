@@ -1,3 +1,7 @@
+---
+description: The sartoriuslib command catalogue — Command[Req, Resp] specs with xBPI and SBI variants, safety tiers, capability hints, and firmware bounds.
+---
+
 # Commands
 
 Every Sartorius command is one [`Command[Req, Resp]`](../src/sartoriuslib/commands/base.py)

@@ -1,3 +1,7 @@
+---
+description: sartoriuslib.commands — declarative Command specs and the per-protocol XbpiVariant / SbiVariant ABCs that back the full Sartorius command catalogue.
+---
+
 # `sartoriuslib.commands`
 
 Declarative command specs and the per-protocol variant ABCs. See

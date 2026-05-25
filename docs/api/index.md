@@ -1,3 +1,7 @@
+---
+description: API reference for sartoriuslib, auto-generated from source docstrings via mkdocstrings-python.
+---
+
 # API reference
 
 Auto-generated from source docstrings via

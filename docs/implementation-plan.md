@@ -1,3 +1,7 @@
+---
+description: Historical phased implementation plan for sartoriuslib, retained for reference. The current API and behavior are documented in the guide pages and API reference.
+---
+
 # sartoriuslib — Implementation Plan
 
 !!! note "Historical planning document"

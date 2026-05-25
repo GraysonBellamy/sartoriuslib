@@ -1,3 +1,7 @@
+---
+description: Install sartoriuslib with pip, including optional extras for Parquet, Postgres, and SQLite sinks. Requires Python 3.13 or newer.
+---
+
 # Installation
 
 ```bash

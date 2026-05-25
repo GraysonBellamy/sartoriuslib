@@ -1,3 +1,7 @@
+---
+description: sartoriuslib.streaming — Sample, StreamingSession, StreamMode, record(), AcquisitionSummary, OverflowPolicy, and PollSource for acquisition pipelines.
+---
+
 # `sartoriuslib.streaming`
 
 `Sample`, `StreamingSession`, `StreamMode`, `record()`,

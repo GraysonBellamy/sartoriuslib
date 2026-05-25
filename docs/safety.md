@@ -1,3 +1,7 @@
+---
+description: Safety rules for sartoriuslib — per-command SafetyTier, the confirm=True gate for destructive and persistent operations, and the rationale for each tier.
+---
+
 # Safety
 
 `sartoriuslib` drives physical hardware. Safety rules are binding; see

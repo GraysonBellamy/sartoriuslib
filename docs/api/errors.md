@@ -1,3 +1,7 @@
+---
+description: sartoriuslib.errors — the typed exception hierarchy and structured ErrorContext for protocol, transport, command, and safety failures.
+---
+
 # `sartoriuslib.errors`
 
 Typed exception hierarchy and structured `ErrorContext`. See
