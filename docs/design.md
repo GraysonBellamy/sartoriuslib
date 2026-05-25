@@ -1,5 +1,5 @@
 ---
-description: sartoriuslib architecture reference — design goals, protocol duality (xBPI/SBI), capability-bitmap dispatch, async core with sync facade, and the acquisition pipeline.
+description: sartoriuslib architecture — design goals, protocol duality (xBPI/SBI), capability-bitmap dispatch, async core with sync facade, and acquisition pipeline.
 ---
 
 # sartoriuslib — Final Architecture

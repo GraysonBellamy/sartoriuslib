@@ -1,5 +1,5 @@
 ---
-description: Python library for Sartorius lab balances over serial — xBPI binary and SBI ASCII protocols, async-first with a sync facade, fake transport, multi-device manager, and streaming acquisition sinks.
+description: Python library for Sartorius lab balances over serial — async-first xBPI and SBI protocols, sync facade, fake transport, manager, and streaming sinks.
 ---
 
 # sartoriuslib

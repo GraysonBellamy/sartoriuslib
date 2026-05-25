@@ -1,5 +1,5 @@
 ---
-description: Stream readings from Sartorius balances — cadenced request/response polling on xBPI and SBI plus device-driven SBI autoprint modes, producing a uniform Reading shape.
+description: Stream readings from Sartorius balances — cadenced xBPI/SBI polling plus device-driven SBI autoprint modes, producing a uniform Reading shape.
 ---
 
 # Streaming

@@ -1,5 +1,5 @@
 ---
-description: The Balance class for every Sartorius family — CUBIS analytical, OEM weigh cell, and basic laboratory — with capability-bitmap dispatch rather than class hierarchy.
+description: The Balance class for every Sartorius family — CUBIS, OEM weigh cell, and basic lab — with capability-bitmap dispatch rather than class hierarchy.
 ---
 
 # Balances
