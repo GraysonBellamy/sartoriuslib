@@ -1,3 +1,7 @@
+---
+description: sartoriuslib.sinks — the SampleSink Protocol, the pipe() driver, and first-party CSV, JSONL, SQLite, Parquet, and Postgres sinks.
+---
+
 # `sartoriuslib.sinks`
 
 `SampleSink` Protocol, `pipe()` driver, and first-party sinks. See

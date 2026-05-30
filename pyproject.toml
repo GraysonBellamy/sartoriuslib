@@ -58,7 +58,7 @@ sarto-diag = "sartoriuslib.cli.diagnostics:main"
 [project.urls]
 Homepage = "https://github.com/GraysonBellamy/sartoriuslib"
 Repository = "https://github.com/GraysonBellamy/sartoriuslib"
-Documentation = "https://GraysonBellamy.github.io/sartoriuslib/"
+Documentation = "https://graysonbellamy.github.io/sartoriuslib/"
 Issues = "https://github.com/GraysonBellamy/sartoriuslib/issues"
 Changelog = "https://github.com/GraysonBellamy/sartoriuslib/blob/main/CHANGELOG.md"
 

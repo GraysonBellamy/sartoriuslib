@@ -1,3 +1,7 @@
+---
+description: Frozen Reading dataclasses returned by the Balance facade — protocol-agnostic models for weight value, unit, stability, and timestamp.
+---
+
 # Readings
 
 Both wire protocols decode into the same frozen, `slots=True` dataclasses.

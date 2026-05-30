@@ -1,3 +1,7 @@
+---
+description: sartoriuslib.protocol — ProtocolKind, ProtocolClient, detect_protocol, and the xBPI and SBI client and parser sub-packages.
+---
+
 # `sartoriuslib.protocol`
 
 `ProtocolKind`, `ProtocolClient`, `detect_protocol()`, and the xBPI /

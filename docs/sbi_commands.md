@@ -1,3 +1,7 @@
+---
+description: Sartorius SBI control commands — data input syntax, command formats, parameter writes, and the function-key remote commands accepted over the data port.
+---
+
 # Data Interfaces
 
 ## Data Input

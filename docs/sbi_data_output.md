@@ -1,3 +1,7 @@
+---
+description: Sartorius SBI data output — print command (Esc P), autoprint modes, synchronized and interval-based emission, and the parsed weight-line format.
+---
+
 # Data Interfaces — Data Output
 
 ## Data Output

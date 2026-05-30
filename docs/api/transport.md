@@ -1,3 +1,7 @@
+---
+description: sartoriuslib.transport — the Transport Protocol, SerialTransport for hardware, FakeTransport for tests, and SerialSettings.
+---
+
 # `sartoriuslib.transport`
 
 The `Transport` Protocol, `SerialTransport` for hardware, and

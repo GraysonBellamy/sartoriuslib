@@ -1,3 +1,7 @@
+---
+description: sartoriuslib.devices — the Balance facade, Session, BalanceFamily, Capability, SafetyTier, and public dataclasses (Reading, BalanceStatus, DeviceInfo).
+---
+
 # `sartoriuslib.devices`
 
 Device-layer reference: direct package re-exports (`Session`,

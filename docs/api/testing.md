@@ -1,3 +1,7 @@
+---
+description: sartoriuslib.testing — FakeTransport, canned_frames, fixture parsers, and script builders for testing against the Balance facade without hardware.
+---
+
 # `sartoriuslib.testing`
 
 `FakeTransport`, `canned_frames`, fixture parsers, and script builders.

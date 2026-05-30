@@ -1,3 +1,7 @@
+---
+description: Async quickstart for sartoriuslib — open a Sartorius balance over serial, poll readings, tare, and stream samples with anyio.
+---
+
 # Async quickstart
 
 ```python

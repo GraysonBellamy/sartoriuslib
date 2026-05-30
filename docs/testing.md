@@ -1,3 +1,7 @@
+---
+description: First-class testing utilities for sartoriuslib — FakeTransport, fixtures, hardware tiers, and running the test suite without a connected balance.
+---
+
 # Testing
 
 `sartoriuslib` ships first-class testing utilities so callers can build

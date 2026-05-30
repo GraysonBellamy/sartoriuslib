@@ -1,3 +1,7 @@
+---
+description: The Balance class for every Sartorius family — CUBIS, OEM weigh cell, and basic lab — with capability-bitmap dispatch rather than class hierarchy.
+---
+
 # Balances
 
 Sartorius balances all do the same thing — weigh, tare, zero — and differ

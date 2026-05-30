@@ -1,3 +1,7 @@
+---
+description: sartoriuslib.maintenance — one-shot port-level helpers for protocol switching, baud changes, and SBN-address writes, all gated by confirm=True.
+---
+
 # `sartoriuslib.maintenance`
 
 One-shot port-level helpers for protocol switching, baud changes, and

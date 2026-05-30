@@ -1,3 +1,7 @@
+---
+description: sartoriuslib architecture — design goals, protocol duality (xBPI/SBI), capability-bitmap dispatch, async core with sync facade, and acquisition pipeline.
+---
+
 # sartoriuslib — Final Architecture
 
 ## 0. Scope

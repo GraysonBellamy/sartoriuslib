@@ -1,3 +1,7 @@
+---
+description: sartoriuslib.manager — SartoriusManager multi-balance orchestrator, BalanceManager alias, DeviceResult, and ErrorPolicy.
+---
+
 # `sartoriuslib.manager`
 
 `SartoriusManager` (multi-balance orchestrator), `BalanceManager` alias,

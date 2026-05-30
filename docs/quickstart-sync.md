@@ -1,3 +1,7 @@
+---
+description: Synchronous quickstart for sartoriuslib — a blocking facade wrapping the async core through a BlockingPortal, suited to scripts, notebooks, and REPL sessions.
+---
+
 # Sync quickstart
 
 The async core is canonical (see [Async quickstart](quickstart-async.md)).

@@ -1,3 +1,7 @@
+---
+description: Reverse-engineered Sartorius xBPI binary protocol reference — framing, checksums, SBN addressing, opcode tables, and capture analysis across all families.
+---
+
 # Sartorius xBPI Protocol — Reverse-Engineered Reference
 
 A reference to the Sartorius xBPI binary protocol, reverse engineered
@@ -1356,10 +1360,6 @@ both those balances without incident, triggered the drop on BCE.
 
 - **This repository**: everything under `src/sartoriuslib/` — the Python
   implementation of the findings documented here.
-- **WZG OEM weigh cell manual**: shipped with Sartorius WZG OEM weigh
-  cells. A local copy lives at
-  [datalab-output-Bilance_Tecniche_Sartorius_OEM_IP65_DS-WZG-e.md](datalab-output-Bilance_Tecniche_Sartorius_OEM_IP65_DS-WZG-e.md)
-  in this project.
 - **Captured sessions**: `tests/fixtures/captures/` — promoted JSON, JSONL,
   CSV, SQLite, and text fixtures with raw xBPI/SBI bytes and decoded state
   snapshots that feed regression tests.

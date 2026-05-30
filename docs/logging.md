@@ -1,3 +1,7 @@
+---
+description: Continuous data capture for Sartorius balances — drift-free async recorder paired with CSV, JSONL, SQLite, Parquet, and Postgres sinks.
+---
+
 # Logging and acquisition
 
 For continuous data capture, `sartoriuslib` provides a recorder that

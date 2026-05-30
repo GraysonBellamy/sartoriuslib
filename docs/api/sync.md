@@ -1,3 +1,7 @@
+---
+description: sartoriuslib.sync — synchronous facade wrapping the async core through an anyio BlockingPortal for use in scripts, notebooks, and REPL sessions.
+---
+
 # `sartoriuslib.sync`
 
 Sync facade over the async core, wrapped through `anyio.BlockingPortal`.
