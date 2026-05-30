@@ -5,6 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.2] - 2026-05-30
+
+### Fixed
+
+- **`discover_temperature_sensors()` no longer crashes on firmwares that
+  signal an absent sensor slot with xBPI `0x03` (value out of range)**
+  instead of the `7f ff ff ff` sentinel. Observed on a WZ8202 OEM weigh
+  cell (sensors at indices 0/1, `0x03` at 2+): the
+  `SartoriusValueOutOfRangeError` used to propagate and abort the walk.
+  The `0x03` slot is now treated as empty and skipped, with probing
+  continuing to `max_index` so a sparse map is not truncated at the
+  first gap. `0x10` (`SartoriusIndexOutOfRangeError`) remains the
+  authoritative end-of-list stop.
+
+### Changed
+
+- **`OEM_WEIGH_CELL` family capability prior expanded** from
+  `XBPI_SUPPORT | SBI_SUPPORT` to the set cross-confirmed on two distinct
+  OEM cells — a live WZ8202 and the recorded WZA8202-N — adding
+  `HIRES_WEIGHT`, `PARAMETER_TABLE`, `TEMPERATURE_SENSORS`, and
+  `BARGRAPH`. `ISOCAL` (p15), `AUTO_OUTPUT` (p36), and `RAW_ADC` (0x75)
+  are present on the WZ8202 but absent or unconfirmed on the WZA8202-N,
+  so they stay live-probe decisions rather than family priors.
+  Non-breaking — capability priors are soft (a mismatch costs one
+  warning, never an error).
+
+### Added
+
+- **`build_temperature_script(..., value_out_of_range_at=...)`** in
+  `sartoriuslib.testing` — scripts xBPI `0x03` (value out of range)
+  replies for the given sensor indices, for exercising sparse
+  temperature layouts.
+
+### Documentation
+
+- `docs/protocol.md` §14.2.1 records the WZ8202 as a second OEM weigh-cell
+  data point and its divergences from the WZA8202-N (richer parameter
+  table incl. p15/p36/p40; temperature sensors at idx 0/1 vs 0/3; `0x75`
+  raw-ADC present; `0x28` internal-adjust returns `0x06` not-applicable).
+
 ## [0.4.0] - 2026-05-15
 
 ### Unified cross-library API (`UNIFIED_API_HANDOFF.md`)
