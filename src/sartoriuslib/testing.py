@@ -226,6 +226,7 @@ def build_temperature_script(
     *,
     sensor_celsius: dict[int, float | None],
     out_of_range_after: int | None = None,
+    value_out_of_range_at: set[int] | None = None,
 ) -> dict[bytes, bytes]:
     """Script the per-sensor replies for ``temperature(N)`` calls.
 
@@ -234,10 +235,13 @@ def build_temperature_script(
     index. ``out_of_range_after`` adds an xBPI ``0x04`` (unknown opcode)
     reply for index ``N`` (and the helper does NOT script higher
     indices, mirroring the wire reality where the device stops
-    replying past the end). Useful for testing
-    :meth:`Balance.discover_temperature_sensors` against a sparse
+    replying past the end). ``value_out_of_range_at`` scripts a ``0x03``
+    (value out of range) reply for each listed index — how a WZ8202
+    reports an absent sensor slot instead of the sentinel. Useful for
+    testing :meth:`Balance.discover_temperature_sensors` against a sparse
     layout (e.g. MSE: ``{0: 25.5, 1: 25.6, 2: None, 3: 36.7}`` +
-    ``out_of_range_after=4``).
+    ``out_of_range_after=4``; WZ8202: ``{0: 20.0, 1: 19.8}`` +
+    ``value_out_of_range_at={2, 3}`` + ``out_of_range_after=4``).
     """
     sentinel_body = b"\x7f\xff\xff\xff\xff"
     script: dict[bytes, bytes] = {}
@@ -247,6 +251,10 @@ def build_temperature_script(
             script[tx] = _rx(0x35, sentinel_body)
         else:
             script[tx] = _typed_float_rx(celsius)
+    for sensor in value_out_of_range_at or set():
+        tx = build_command(0x76, bytes([0x21, sensor]))
+        # xBPI 0x01 0x03 = value out of range.
+        script[tx] = _rx(0x01, b"\x03")
     if out_of_range_after is not None:
         tx = build_command(0x76, bytes([0x21, out_of_range_after]))
         # xBPI 0x01 0x04 = unknown/unsupported opcode.

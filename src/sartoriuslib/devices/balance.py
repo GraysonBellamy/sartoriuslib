@@ -224,7 +224,42 @@ _FAMILY_DEFAULT_CAPABILITIES: dict[BalanceFamily, Capability] = {
         | Capability.APP_MODES
         | Capability.BARGRAPH
     ),
-    BalanceFamily.OEM_WEIGH_CELL: Capability.XBPI_SUPPORT | Capability.SBI_SUPPORT,
+    # Seeded only with capabilities cross-confirmed on TWO distinct OEM cells:
+    # a live WZ8202 (xBPI @ 9600, probed 2026-05-30) and the WZA8202-N recorded
+    # in docs/protocol.md §14.2. Both answer on the wire for HIRES_WEIGHT
+    # (0x1F), PARAMETER_TABLE (0x55), TEMPERATURE_SENSORS (0x76), and BARGRAPH
+    # (0x2F) — so these are safe family-wide priors.
+    #
+    # Deliberately NOT seeded, and why (the cross-reference pruned these):
+    #   - CONFIG_COUNTER (0xBA), CAL_RECORD (0xB9): err_04 on BOTH cells — absent.
+    #   - EXTENDED_OPCODES (0xBC): err_04 on WZ8202, untested on WZA — lean absent.
+    #   - ISOCAL (p15): present on WZ8202 (p15=1) but NOT on WZA8202-N, whose
+    #     parameter table is only indices 1-7,9 and whose status byte uses the
+    #     non-Cubis encoding (no isoCAL-due bit, §14.5). Model-specific, not
+    #     family-wide.
+    #   - AUTO_OUTPUT (p36): readable on WZ8202 but p36 is outside WZA's 8-index
+    #     xBPI table; WZA still ships in SBI autoprint, so the capability is
+    #     real but its mechanism diverges — left to live probing rather than a
+    #     prior.
+    #   - RAW_ADC (0x75): present on WZ8202, undocumented on WZA — uncorroborated.
+    #   - INTERNAL_CAL (0x28): returned 0x06 "operation not applicable" on WZ8202
+    #     (opcode recognised but refused) and 0xB9/0xBA absence suggests the OEM
+    #     cells have no cal-record/internal-cal path like the MSE. Unresolved.
+    #   - APP_MODES / LEVEL_SENSOR / EXTERNAL_CAL / PROTOCOL_SWITCHING: unprobed
+    #     or Cubis-specific.
+    #
+    # The two cells diverge (WZ8202 has a richer parameter table incl. p15/p36/
+    # p40; WZA8202-N exposes only 1-7,9), so anything past the four flags above
+    # stays a live-probe decision — a wrong prior only costs one warning + a
+    # 0x04-driven availability flip, but under-claiming keeps the prior honest.
+    BalanceFamily.OEM_WEIGH_CELL: (
+        Capability.XBPI_SUPPORT
+        | Capability.SBI_SUPPORT
+        | Capability.HIRES_WEIGHT
+        | Capability.PARAMETER_TABLE
+        | Capability.TEMPERATURE_SENSORS
+        | Capability.BARGRAPH
+    ),
     BalanceFamily.BASIC_LAB: (Capability.XBPI_SUPPORT | Capability.PARAMETER_TABLE),
     BalanceFamily.UNKNOWN: Capability.XBPI_SUPPORT,
 }
@@ -699,8 +734,12 @@ class Balance:
         readings (``celsius`` is a ``float``) **and** sentinel slots
         (``celsius`` is ``None`` because the firmware returned
         ``7f ff ff ff``). Stops early on
-        :class:`SartoriusIndexOutOfRangeError`, which the device
-        emits past the last valid index. Updates the cached
+        :class:`SartoriusIndexOutOfRangeError` (``0x10``), which the
+        device emits past the last valid index. A ``0x03``
+        value-out-of-range reply (how a WZ8202 reports an absent sensor
+        slot, instead of the sentinel) is treated as an empty slot and
+        skipped — probing continues to ``max_index`` so a sparse map is
+        not truncated at the first gap. Updates the cached
         :class:`DeviceInfo`'s
         :attr:`temperature_sensor_indices` with the discovered tuple
         and returns it.
@@ -723,14 +762,26 @@ class Balance:
         from sartoriuslib.errors import (  # noqa: PLC0415
             SartoriusIndexOutOfRangeError,
             SartoriusUnsupportedCommandError,
+            SartoriusValueOutOfRangeError,
         )
 
         discovered: list[int] = []
         for sensor in range(max_index + 1):
             try:
                 reading = await self.temperature(sensor)
+            except SartoriusValueOutOfRangeError:
+                # 0x03 — this firmware signals "no sensor at this index"
+                # with value-out-of-range rather than the 7f-ff-ff-ff
+                # sentinel (observed on a WZ8202: sensors at 0/1, 0x03 at
+                # 2+). Unlike 0x10, it is a per-slot signal, not a
+                # definitive end-of-list, so we skip the empty slot and
+                # keep probing — a sparse map with a real sensor past the
+                # gap (bounded by ``max_index``) is still discovered.
+                # ``temperature`` is parameterized, so the availability
+                # cache is not poisoned for in-range indices.
+                continue
             except SartoriusIndexOutOfRangeError:
-                # Past the last valid index — clean stop.
+                # 0x10 — past the last valid index. Authoritative end stop.
                 break
             except SartoriusUnsupportedCommandError:
                 # Some firmwares mis-report end-of-list as 0x04 instead

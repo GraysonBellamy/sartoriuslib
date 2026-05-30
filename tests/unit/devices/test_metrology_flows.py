@@ -271,6 +271,37 @@ class TestTemperatureDiscovery:
         await bal.close()
 
     @pytest.mark.anyio
+    async def test_wz8202_value_out_of_range_slots_are_skipped(self) -> None:
+        """Mirror the live WZ8202: sensors at 0/1, then 0x03 (value out of
+        range) at 2 and 3, 0x04 past the end. The walk must record (0, 1)
+        and not abort on the 0x03 reply — the previous behaviour let the
+        SartoriusValueOutOfRangeError propagate and crash discovery."""
+        script = build_identify_script(model="WZ8202")
+        script.update(build_metrology_script())
+        script.update(
+            build_temperature_script(
+                sensor_celsius={0: 20.04, 1: 19.84},
+                value_out_of_range_at={2, 3},
+                out_of_range_after=4,
+            )
+        )
+        transport = FakeTransport(script)
+        bal = await open_device(transport, protocol=ProtocolKind.XBPI, timeout=0.1)
+
+        discovered = await bal.discover_temperature_sensors()
+        assert discovered == (0, 1)
+
+        # 0x03 slots stay readable on demand (cache wasn't poisoned), and
+        # in-range sensors keep working.
+        t0 = await bal.temperature(0)
+        assert t0.celsius is not None
+        assert math.isclose(t0.celsius, 20.04, rel_tol=1e-6, abs_tol=1e-12)
+
+        assert bal.info is not None
+        assert bal.info.temperature_sensor_indices == (0, 1)
+        await bal.close()
+
+    @pytest.mark.anyio
     async def test_no_sensors_returns_empty_tuple(self) -> None:
         """A device that immediately answers 0x04 to ``temperature(0)``
         produces an empty tuple — no sensors at all.

@@ -1084,6 +1084,31 @@ args not yet characterised):
 | `0xFF` | NOP | ACK | ACK | ACK |
 | BCE-specific (see §14.6) | various | err_04 | err_04 | various |
 
+#### 14.2.1 Second OEM cell: WZ8202 (cross-reference, probed 2026-05-30)
+
+A live **WZ8202** (note: no `A`, no `-N` suffix — a distinct model from the
+WZA8202-N above) was probed over xBPI @ 9600. It corroborates WZA8202-N on
+the shared opcodes (`0x1F`/`0x55`/`0x76`/`0x2F` all ✓; `0xB9`/`0xBA`/`0xBC`
+all err_04) but **diverges** in two ways worth recording:
+
+- **Richer parameter table.** WZ8202 answers `p15` (isoCAL, current=1/max=2),
+  `p36` (auto-output, current=1/max=5), and `p40` (menu access) — all outside
+  WZA8202-N's documented 1-7,9 range. So the OEM line is not uniform on
+  parameter-table extent.
+- **Temperature sensor indices differ.** WZ8202 reports sensors at idx **0
+  and 1** (20.04 °C / 19.84 °C), where WZA8202-N reports idx **0 and 3**.
+  Both have 2 installed sensors, but the index map is model-specific.
+- **`0x75` (raw ADC) works** on WZ8202 (returned `0c 52 ff ac`) — untested on
+  WZA8202-N.
+- **`0x28` (internal adjust)** returned err_06 "operation not applicable"
+  (recognised but refused in the unit's current state), not err_04.
+
+Consequence for `_FAMILY_DEFAULT_CAPABILITIES[OEM_WEIGH_CELL]`: only the
+four cross-confirmed capabilities (HIRES_WEIGHT, PARAMETER_TABLE,
+TEMPERATURE_SENSORS, BARGRAPH) are seeded as family priors; isoCAL,
+auto-output, and raw-ADC are left to live probing because the two cells
+disagree.
+
 ### 14.3 Metrological thresholds (0x0B / 0x0E)
 
 `0x0D` is the live increment (display-unit dependent). `0x0B` and
