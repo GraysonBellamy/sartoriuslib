@@ -466,8 +466,8 @@ class TestConcurrency:
             results.append(await session.execute(command, _NoReq()))
 
         async with anyio.create_task_group() as tg:
-            tg.start_soon(_exec, READ_SBN)
-            tg.start_soon(_exec, TARE)
+            _ = tg.start_soon(_exec, READ_SBN)
+            _ = tg.start_soon(_exec, TARE)
         assert set(transport.writes) == {tx_sbn, tx_tare}
         # Both calls completed.
         assert len(results) == 2

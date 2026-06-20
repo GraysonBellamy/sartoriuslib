@@ -301,6 +301,6 @@ class TestSamePortSerialisation:
             assert b1.session is not b2.session
 
             async with anyio.create_task_group() as tg:
-                tg.start_soon(b1.poll)
-                tg.start_soon(b2.poll)
+                _ = tg.start_soon(b1.poll)
+                _ = tg.start_soon(b2.poll)
         assert not shared.concurrency_violation

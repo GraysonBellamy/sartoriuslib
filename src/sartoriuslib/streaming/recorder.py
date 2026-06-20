@@ -285,7 +285,7 @@ async def record(
     )
 
     async with anyio.create_task_group() as tg, receive_stream:
-        tg.start_soon(
+        _ = tg.start_soon(
             _run_producer,
             source,
             send_stream,

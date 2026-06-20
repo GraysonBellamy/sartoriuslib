@@ -191,8 +191,8 @@ class TestLock:
         client, transport = await _open_client(script)
 
         async with anyio.create_task_group() as tg:
-            tg.start_soon(client.execute, tx1)
-            tg.start_soon(client.execute, tx2)
+            _ = tg.start_soon(client.execute, tx1)
+            _ = tg.start_soon(client.execute, tx2)
         assert set(transport.writes) == {tx1, tx2}
         assert len(transport.writes) == 2
 
@@ -212,7 +212,7 @@ class TestLock:
 
         try:
             async with anyio.create_task_group() as tg:
-                tg.start_soon(_run)
+                _ = tg.start_soon(_run)
                 await anyio.lowlevel.checkpoint()
                 client.dispose()
                 client.lock.release()

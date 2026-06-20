@@ -687,7 +687,7 @@ class SartoriusManager:
 
         async with anyio.create_task_group() as tg:
             for member_names in groups.values():
-                tg.start_soon(_run_group, member_names)
+                _ = tg.start_soon(_run_group, member_names)
 
         if self._error_policy is ErrorPolicy.RAISE and errors:
             raise ExceptionGroup(f"manager.{label}: one or more balances failed", errors)

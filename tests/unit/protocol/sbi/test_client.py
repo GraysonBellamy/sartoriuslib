@@ -125,7 +125,7 @@ class TestSbiProtocolClient:
 
         try:
             async with anyio.create_task_group() as tg:
-                tg.start_soon(_run)
+                _ = tg.start_soon(_run)
                 await anyio.lowlevel.checkpoint()
                 client.dispose()
                 client.lock.release()

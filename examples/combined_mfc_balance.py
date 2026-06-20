@@ -68,8 +68,8 @@ async def main() -> None:
                 summary = await pipe(bal_stream, bal_sink)
                 print(f"balance samples_emitted: {summary.samples_emitted}")
 
-            tg.start_soon(_drain_mfc)
-            tg.start_soon(_drain_bal)
+            _ = tg.start_soon(_drain_mfc)
+            _ = tg.start_soon(_drain_bal)
 
     print(f"\nwrote {db_path}")
     with sqlite3.connect(db_path) as conn:
