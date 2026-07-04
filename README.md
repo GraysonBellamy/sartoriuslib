@@ -143,7 +143,7 @@ end-to-end tests and demos work without hardware.
 
 ## Documentation
 
-Full docs live at <https://graysonbellamy.github.io/sartoriuslib/>. Useful
+Full docs live at <https://sartoriuslib.graysonbellamy.dev/>. Useful
 entry points:
 
 - [Async quickstart](docs/quickstart-async.md) /
