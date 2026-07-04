@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://graysonbellamy.github.io/sartoriuslib/sitemap.xml
+Sitemap: https://sartoriuslib.graysonbellamy.dev/sitemap.xml
