@@ -143,10 +143,10 @@ class StreamingSession:
         return _sample_from_reading(
             self._device_name(),
             reading,
-            requested_at,
-            received_at,
-            start_ns,
-            end_ns,
+            requested_at=requested_at,
+            received_at=received_at,
+            start_ns=start_ns,
+            end_ns=end_ns,
             mode="poll",
         )
 
@@ -171,10 +171,10 @@ class StreamingSession:
             return _sample_from_reading(
                 self._device_name(),
                 reading,
-                requested_at,
-                received_at,
-                start_ns,
-                end_ns,
+                requested_at=requested_at,
+                received_at=received_at,
+                start_ns=start_ns,
+                end_ns=end_ns,
                 mode="autoprint",
             )
 
@@ -186,11 +186,11 @@ class StreamingSession:
 def _sample_from_reading(
     device: str,
     reading: Reading,
+    *,
     requested_at: datetime,
     received_at: datetime,
     start_ns: int,
     end_ns: int,
-    *,
     mode: str,
 ) -> Sample:
     latency = (received_at - requested_at).total_seconds()

@@ -44,6 +44,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import Enum
+from functools import partial
 from time import monotonic_ns
 from typing import TYPE_CHECKING, Protocol
 
@@ -285,15 +286,19 @@ async def record(
     )
 
     async with anyio.create_task_group() as tg, receive_stream:
+        # ``start_soon`` forwards positional args only, so the keyword-only
+        # producer options are bound up front.
         _ = tg.start_soon(
-            _run_producer,
-            source,
-            send_stream,
-            period,
-            total_ticks,
-            names,
-            overflow,
-            summary,
+            partial(
+                _run_producer,
+                source,
+                send_stream,
+                period=period,
+                total_ticks=total_ticks,
+                names=names,
+                overflow=overflow,
+                summary=summary,
+            )
         )
         try:
             yield recording
@@ -317,6 +322,7 @@ async def record(
 async def _run_producer(
     source: PollSource,
     send_stream: MemoryObjectSendStream[Mapping[str, Sample]],
+    *,
     period: float,
     total_ticks: int | None,
     names: Sequence[str] | None,

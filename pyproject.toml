@@ -212,6 +212,10 @@ convention = "google"
 "asyncio.wait_for".msg = "Use anyio.fail_after / anyio.move_on_after instead."
 
 [tool.ruff.format]
+# Ruff 0.16 formats Python code blocks inside Markdown. The docs use
+# illustrative (non-runnable) snippets with hand-aligned trailing comments,
+# so the formatter is scoped to real Python sources only.
+exclude = ["*.md"]
 quote-style = "double"
 indent-style = "space"
 line-ending = "lf"

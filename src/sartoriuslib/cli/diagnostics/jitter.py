@@ -55,7 +55,7 @@ __all__ = [
 
 
 type FrameMode = Literal["long", "short"]
-type JsonValue = str | int | float | bool | None | dict[str, JsonValue] | list[JsonValue]
+type JsonValue = str | int | float | bool | dict[str, JsonValue] | list[JsonValue] | None
 type RowValue = str | int | float | bool | None
 
 _DEFAULT_RATE_HZ: float = 50.0
