@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.5.0] - 2026-11-27
 
 ### Added
 
@@ -57,8 +57,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`Balance.status()` during an internal adjustment.** It now reports
+  `state=BalanceState.ADJUSTING`, `stable=False`, `adjusting=True`.
+  Before, the raw stable bit leaked through as `STABLE`/`UNSTABLE`, but
+  during an adjustment that bit describes the internal cal weight, not
+  the pan. Nothing changes outside an adjustment.
 - The `sarto-diag` dispatcher resolves subcommands from a table.
   Behaviour is unchanged.
+
+### Fixed
+
+- **A cancelled or timed-out xBPI command no longer corrupts the next
+  one** (#57). If an exchange was interrupted after its request went out,
+  the rest of the reply stayed on the wire and the next command read it
+  as its own. Because status blocks and short measurements share subtype
+  `0x48` and an 8-byte body, a cancelled `status()` made the following
+  `poll()` silently return the status block as a weight (50 of 50 times
+  on an MSE1203S). The client now marks such an exchange, and before the
+  next request it discards stragglers (`RESYNC_IDLE_S` = 50 ms of idle
+  line) and flushes the input buffer. Clean exchanges are unaffected.
 
 ### Documentation
 
