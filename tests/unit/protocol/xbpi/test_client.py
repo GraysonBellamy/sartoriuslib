@@ -159,6 +159,81 @@ class TestExecuteTransportErrors:
 
 
 # ---------------------------------------------------------------------------
+# Interrupted exchanges — the next exchange must not read a stale reply.
+# ---------------------------------------------------------------------------
+
+_TX_STATUS = build_command(0x30)
+_TX_NET = build_command(0x1E)
+#: A status block and a short measurement are both subtype 0x48 with an
+#: 8-byte body, so a stale status reply decodes as a plausible weight.
+_RX_STATUS = _rx(0x48, bytes([0x00, 0x00, 0x81, 0x89, 0x08, 0x10, 0x00, 0x07]))
+_RX_NET = _rx(0x48, bytes.fromhex("4147ae1400304245"))
+
+
+class TestInterruptedExchange:
+    @pytest.mark.anyio
+    async def test_cancel_after_write_does_not_desync_next_call(self) -> None:
+        """Cancelled between write and read: the orphaned reply is discarded."""
+        replied = anyio.Event()
+
+        def status_reply(_: bytes) -> bytes:
+            replied.set()  # the reply is now queued; the client is about to read it
+            return _RX_STATUS
+
+        transport = FakeTransport({_TX_STATUS: status_reply, _TX_NET: _RX_NET}, latency_s=0.01)
+        await transport.open()
+        client = XbpiProtocolClient(transport, default_timeout=0.5)
+
+        with anyio.CancelScope() as scope:
+            async with anyio.create_task_group() as tg:
+                tg.start_soon(client.execute, _TX_STATUS)
+                await replied.wait()
+                scope.cancel()  # lands in read_exact's latency sleep
+
+        frame = await client.execute(_TX_NET)
+        assert frame.raw == _RX_NET
+
+    @pytest.mark.anyio
+    async def test_partial_frame_timeout_does_not_poison_next_call(self) -> None:
+        """A reply cut off mid-frame must not prefix the next reply."""
+        client, _ = await _open_client({_TX_STATUS: _RX_STATUS[:5], _TX_NET: _RX_NET})
+        with pytest.raises(SartoriusTimeoutError):
+            await client.execute(_TX_STATUS, timeout=0.02)
+        frame = await client.execute(_TX_NET)
+        assert frame.raw == _RX_NET
+
+    @pytest.mark.anyio
+    async def test_late_reply_after_timeout_is_discarded(self) -> None:
+        """The balance answers after the caller gave up; the next call skips it."""
+        client, transport = await _open_client({_TX_NET: _RX_NET})
+        with pytest.raises(SartoriusTimeoutError):
+            await client.execute(_TX_STATUS, timeout=0.02)  # unscripted: no reply yet
+        transport.feed(_RX_STATUS)  # ...and now it arrives
+        frame = await client.execute(_TX_NET)
+        assert frame.raw == _RX_NET
+
+    @pytest.mark.anyio
+    async def test_clean_exchanges_never_drain(self) -> None:
+        """No resync cost on the happy path or after a device error reply."""
+        drains = 0
+
+        class _Counting(FakeTransport):
+            async def drain_input(self) -> None:
+                nonlocal drains
+                drains += 1
+                await super().drain_input()
+
+        transport = _Counting({_TX_NET: _RX_NET, _TX_STATUS: _rx(0x01, b"\x06")})
+        await transport.open()
+        client = XbpiProtocolClient(transport, default_timeout=0.1)
+        await client.execute(_TX_NET)
+        with pytest.raises(SartoriusOperationNotApplicableError):
+            await client.execute(_TX_STATUS)
+        await client.execute(_TX_NET)
+        assert drains == 0
+
+
+# ---------------------------------------------------------------------------
 # Lock — single-in-flight semantics.
 # ---------------------------------------------------------------------------
 
