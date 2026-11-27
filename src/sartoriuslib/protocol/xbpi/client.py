@@ -7,9 +7,18 @@ xBPI length-prefix read sequence (``read_exact(1)`` then
 subtype-``0x01`` error replies to typed
 :class:`sartoriuslib.errors.SartoriusError` subclasses.
 
-Transport errors propagate unchanged. Framing errors and error-subtype
-replies both trigger a best-effort :meth:`Transport.drain_input` before
-re-raising, so the next call starts from a clean buffer.
+Transport errors propagate unchanged. Framing errors trigger a
+best-effort :meth:`Transport.drain_input` before re-raising, so the next
+call starts from a clean buffer.
+
+An exchange that is interrupted after its request went out (cancelled,
+or timed out before the whole reply arrived) leaves the client
+*out of sync*: the rest of that reply may still be on the wire. The next
+exchange first swallows any stragglers (``read_available`` until the line
+has been idle for :data:`RESYNC_IDLE_S`) and flushes the input buffer.
+Without this, a status-block reply orphaned by a cancelled poll would be
+read as the next command's reply. Both are subtype ``0x48`` / 8 bytes,
+so it would silently decode as a plausible weight.
 
 Design reference: doc §4.1 (protocol-duality seam), §6.1.1
 (response-to-availability mapping).
@@ -43,11 +52,18 @@ if TYPE_CHECKING:
     from sartoriuslib.protocol.xbpi.types import XbpiFrame
     from sartoriuslib.transport.base import Transport
 
-__all__ = ["XbpiProtocolClient"]
+__all__ = ["RESYNC_IDLE_S", "XbpiProtocolClient"]
 
 
 #: Subtype byte that signals a device-side refusal.
 _ERROR_SUBTYPE: int = 0x01
+
+#: After an interrupted exchange, how long the line must stay quiet before
+#: the late remainder of the old reply is considered fully swallowed. The
+#: MSE answers in ~4 ms at 57600 baud. At 1200 baud a 12-byte frame takes
+#: ~100 ms, but bytes keep arriving every ~9 ms, so an idle gap of this
+#: length only occurs once the reply has finished.
+RESYNC_IDLE_S: float = 0.05
 
 #: Error-code → exception class map, per design §6.1.1 and
 #: ``docs/protocol.md`` §6. Codes outside this map surface as
@@ -104,6 +120,10 @@ class XbpiProtocolClient:
         self._default_timeout = default_timeout
         self._lock = anyio.Lock()
         self._disposed = False
+        # True from the moment a request is written until its whole reply
+        # frame has been read. Left True by cancellation or a mid-reply
+        # timeout, which makes the next exchange resync first.
+        self._out_of_sync = False
 
     @property
     def transport(self) -> Transport:
@@ -150,11 +170,17 @@ class XbpiProtocolClient:
         opcode: int | None,
     ) -> XbpiFrame:
         self._raise_if_disposed(command_name=command_name, opcode=opcode)
+        if self._out_of_sync:
+            await self._resync(command_name=command_name)
+        self._out_of_sync = True
         await self._transport.write(request, timeout=timeout)
         length_byte = await self._transport.read_exact(1, timeout=timeout)
         length = length_byte[0]
         rest = await self._transport.read_exact(length, timeout=timeout)
         raw = length_byte + rest
+        # The whole frame as announced by its length byte is consumed: the
+        # stream is aligned again, whatever the frame turns out to contain.
+        self._out_of_sync = False
 
         try:
             frame = parse_frame(raw)
@@ -178,6 +204,30 @@ class XbpiProtocolClient:
             )
 
         return frame
+
+    async def _resync(self, *, command_name: str) -> None:
+        """Discard the remainder of a reply orphaned by an interrupted exchange.
+
+        Best-effort: a transport hiccup here is logged, not raised. The
+        flag clears either way so one bad line cannot wedge every later
+        call. If this resync is itself cancelled the flag stays set and the
+        next exchange tries again.
+        """
+        try:
+            stale = await self._transport.read_available(idle_timeout=RESYNC_IDLE_S)
+            await self._transport.drain_input()
+        except SartoriusError as exc:
+            _logger.debug(
+                "xbpi.resync_failed",
+                extra={"command_name": command_name, "error": repr(exc)},
+            )
+        else:
+            if stale:
+                _logger.debug(
+                    "xbpi.resync_discarded",
+                    extra={"command_name": command_name, "bytes": stale.hex()},
+                )
+        self._out_of_sync = False
 
     def _raise_if_disposed(self, *, command_name: str, opcode: int | None) -> None:
         if not self._disposed:
