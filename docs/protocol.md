@@ -352,11 +352,69 @@ Filter and sampling-rate are **independent axes**:
 
 | Op | Name | Confidence | Notes |
 |---|---|---|---|
-| `0x28` | start_adjustment | [WZG] | TLV arg selects type (112..123 — internal cal, external cal, linearization, etc.). SIDE-EFFECTING. |
-| `0x29` | abort_adjustment | [WZG+OBS][SURE] | Returns err 0x06 when no adjustment is running. |
+| `0x28` | start_adjustment | [WZG+OBS][SURE] | TLV arg selects type (112..123 — internal cal, external cal, linearization, etc.). `21 78` = internal adjust: ACK in ~3 ms, then the adjust runs on the balance for ~24 s (§7.7.1). Returns err 0x06 while an adjustment is already running (the running one is unaffected). SIDE-EFFECTING. |
+| `0x29` | abort_adjustment | [WZG+OBS][SURE] | ACK mid-adjust: the balance unloads the internal weight and goes idle ~2.5 s later without rewriting `0xB9`. Returns err 0x06 when no adjustment is running. |
 | `0x76` | read_temperature_sensors | [WZG+OBS][SURE] | See §9 — 4-sensor array. |
-| `0x78` | read_adjustment_unit | [WZG] | Returns current cal unit. |
+| `0x78` | read_adjustment_unit | [WZG+OBS] | err 0x04 (unknown opcode) on MSE1203S; returns 2 (g) on BCE3202. |
 | `0x79` | write_adjustment_unit | [WZG] | 02=g, 03=kg, 04=ct. Side-effecting. |
+
+#### 7.7.1 What the balance reports during an internal adjustment
+
+[OBS][SURE] on MSE1203S, captured 2026-11-27 with a ~344 g tared preload
+on a noisy bench (8 adjustments: 6 completed, 2 aborted). Raw captures:
+`tests/fixtures/captures/mse_xbpi/internal_adjust/`.
+
+**The balance stays fully responsive.** Every opcode answers at normal
+latency (~4 ms) throughout. No timeouts, framing errors, or busy replies
+in ~10,000 exchanges.
+
+**Timeline** from a ~200 Hz `0x32` trace (run G), seconds after the
+`0x28` ACK:
+
+| From | To | state / status | What is happening |
+|---|---|---|---|
+| +0.009 | +0.031 | `C0` / `08` | adjust starts: bit `0x40` set |
+| +0.031 | +5.954 | `C1`→`C9` / `08` | bits `0x40`+`0x01`: internal weight being handled; net reads return the off-scale sentinel |
+| +5.957 | +6.159 | **`88` / `28`** | **0.202 s with neither adjust bit set** (only status bit `0x20`) |
+| +6.159 | +23.983 | `89`/`81` / `28`/`08` | bit `0x01` only, alternating stable/unstable while the balance waits for stability; net reads return a fake `+1300.000 g` (stable), then `0.000 g` |
+| +24.211 | | | `0xB9` rewritten with the new cal record |
+| +24.283 | | `88`/`80` / `08` | idle; isoCAL-due bit (`0x10`) cleared |
+
+0x28 → idle took 24.3–24.5 s on all six completed runs.
+
+**Reading the state byte (Cubis):**
+
+- Bit `0x01`: adjustment in progress, set for the whole run except the
+  0.2 s gap. Never observed outside an adjustment (idle is `0x80`/`0x88`;
+  off-scale is `0x82`/`0x84`).
+- Bit `0x40`: weight-handling phase, set for the first ~6 s.
+- Status bit `0x20` is set during the gap and during stable stretches of
+  the adjust. It was never set at rest.
+
+A reliable "has it finished?" check must not trust a single idle sample.
+Treat the adjust as over only when the state is idle **and** `0xB9` has
+changed (success), or when it has been idle continuously for well over
+0.2 s (`Balance.wait_for_adjustment()` uses 1 s) with `0xB9` unchanged
+(aborted).
+
+**Other observations:**
+
+- `0xB9` changes only at the end, so reading it any time before the
+  adjust bits clear returns the previous record.
+- The measurement-frame flags byte loses bit `0x04` for the whole adjust
+  on `0x1E` reads (§8.1).
+- The status-block `seq` byte slows from ~100/s to ~4/s.
+- Tare survives the adjustment.
+- `0x62`, `0xBA`, `0x77` (err 0x06), `0x78` (err 0x04) and `0x7A`
+  (err 0x07) don't change during the adjust, so none of them signals
+  progress.
+- `0x29` sent mid-adjust: the bit stays set while the weight is unloaded
+  (~2.5 s), then the balance goes idle with `0xB9` unchanged. That
+  pattern is how an abort shows up on the wire.
+
+**Not yet observed:** a balance-initiated isoCAL run, a front-panel
+abort, an adjustment that fails because the bench never settles, and
+any non-Cubis family. The WZ8202 refuses `0x28` with err 0x06 (§14.2.1).
 
 ### 7.8 Presettings and menus
 
@@ -439,9 +497,25 @@ See §14.2 for the cross-family presence matrix.
 | Bytes | Field | Meaning | Confidence |
 |---|---|---|---|
 | `[0..3]` | cal_temperature | float32 BE — ambient temperature at the moment the last cal ran; matches sensor 0's live reading to LSB | [SURE] |
-| `[4..12]` | cal_signature | 9 bytes identifying which cal-type was run. Identical across multiple internal cals on our unit: `01 09 00 04 02 06 00 07 01` | [LIKELY] |
-| `[13..15]` | cal_counters | Counters that increment per cal event. On our unit [14] and [15] each incremented +1 per cal; [13] incremented +2 per cal (possibly auto-isoCAL piggybacking, or internal adjustment iterations counted separately). | [LIKELY] |
+| `[4..15]` | cal_timestamp | Completion time of the last cal on the **balance's own clock**, one decimal digit per byte: `D D M M Y Y h h m m s s`. | [SURE] |
 | `[16]` | padding | `0x00` terminator | [LIKELY] |
+
+Worked example: `02 04 01 01 02 06 01 09 00 05 05 00` = **24.11.26
+19:05:50**.
+
+Evidence for the timestamp reading (2026-11-27): two internal adjusts
+completed at host times 13:53:26.9 and 13:56:57.9 UTC. Their records read
+`27.11.26 15:56:49` and `27.11.26 16:00:20`. Both moved by the same 3 min
+31 s, and the stamps track a fixed offset, because the bench unit's clock
+is set ~2 h 03 m ahead of UTC. The record is written at the *end* of the
+adjustment (§7.7.1).
+
+Earlier revisions of this table split these bytes into a 9-byte
+"signature" and 3 "counters". That was a misreading: the "signature"
+`01 09 00 04 02 06 00 07 01` is `19.04.26 07:1…`, and the "counters"
+that went up per cal were the minute and second digits.
+`CalRecord.timestamp` decodes the field. `CalRecord.signature` and
+`CalRecord.counters` remain as raw slices for compatibility.
 
 If the balance has never had a cal recorded in the current RAM buffer, the
 metadata bytes `[4..16]` are all zero. The temperature prefix `[0..3]` may
@@ -491,6 +565,21 @@ byte  field                  type         meaning
 bit-0x08 clearing window is a secondary signal useful for knowing when the
 ADC has fully re-settled after recovery.
 
+**Readings taken during an internal adjustment** (§7.7.1) are not
+weights:
+
+- First ~6 s: the off-scale sentinel, flags `0x00`.
+- Then: a fake `+1300.000 g` flagged stable (body `44 a2 80 00 00 30 02 41`),
+  with sign bits "exactly zero" despite the non-zero value.
+- Then: `0.000 g`.
+
+[OBS] On MSE `0x1E` net reads, flags bit `0x04` is set on every reading at
+rest (`0x05`/`0x45`; 1,518 samples across two sessions) and clear on every
+reading during an adjustment (`0x00`/`0x01`/`0x41`; 1,091 of 1,092, the
+exception being the first read after `0x28`). Gross reads (`0x20`) use a
+different low nibble (`0x03` at rest), so the bit is opcode-specific. Its
+behaviour during zero/tare settling and overload is not yet characterised.
+
 ### 8.2 Status block (also 8-byte body, subtype 0x48, returned by 0x30)
 
 ```
@@ -520,11 +609,17 @@ byte  field                  type         meaning
 | unstable | `0x80` | `0x08` | `0x00` | `0x00` |
 | overload | `0x82` | — | — (not captured) | — |
 | underload | `0x84` | — | — (not captured) | — |
+| adjusting (internal cal) | `0xC0`/`0xC1`/`0xC9`/`0x89`/`0x81` | `0x08`/`0x28` (+`0x10` if isoCAL due) | — (not captured) | — |
 
 Interpretation:
 - On Cubis, bit `0x80` in state is the "measurement valid" base and
   bit `0x08` on top marks stable. Status-bit `0x10` = isoCAL
   attention/due; bit `0x08` = ADC-trust.
+- On Cubis, state bits `0x01` (adjustment in progress) and `0x40`
+  (internal-weight handling) mark a running adjustment. While either is
+  set, the stable bit refers to the internal weight, not the pan load.
+  There is one 0.2 s window mid-adjust where both are clear (state
+  `0x88`, status `0x28`). See §7.7.1.
 - On non-Cubis (WZA, BCE), the state byte never sets `0x80`; bit
   `0x08` alone marks stable. Status bit `0x20` appears to carry a
   "result-ready / settled" signal.
@@ -839,8 +934,9 @@ for sensor in (0, 1, 3):           # index 2 is "not installed" on MSE1203S
 ← 14 41 51 <17-byte cal record> <chk>
 ```
 
-Decode per §7.12. If all metadata bytes are zero, no cal has been recorded
-since the last EEPROM clear.
+Decode per §7.12: bytes [0..3] are the cal temperature and bytes [4..15]
+the completion timestamp on the balance's clock. If all metadata bytes are
+zero, no cal has been recorded since the last cold boot.
 
 ## 12. Implementation notes
 
@@ -953,6 +1049,11 @@ balance state (active cal, active tare, service-mode-unlocked) before
 responding. Worth a future session that deliberately enters cal / tare /
 zeroing states and re-sweeps the cluster to see which become valid in each.
 
+Partial result (2026-11-27): during a running internal adjustment, `0x77`
+still returns err 0x06 and `0x7A` err 0x07 (no args sent), so at least
+those two are not unlocked by an active internal cal. The `0x4C`–`0x4F`
+and `0xA0`–`0xB0` members were not probed mid-adjust.
+
 ### 13.6 Service menu (Cubis challenge-response)
 
 Cubis balances protect service-level settings behind a 6-digit
@@ -1005,9 +1106,10 @@ microcontroller, or (d) a legitimate Sartorius service engagement.
 
 ### 13.7 Miscellaneous open questions
 
-- **`0xB9` bytes [13..15]** are confirmed cal-event counters but their
-  exact per-field semantics — and specifically why byte [13] increments
-  by +2 per cal where [14] and [15] increment by +1 — are unresolved.
+- ~~**`0xB9` bytes [13..15]** are confirmed cal-event counters~~ —
+  **resolved**: bytes [4..15] are a one-digit-per-byte `DDMMYYhhmmss`
+  completion timestamp (§7.12). The "+2 / +1 per cal" pattern was the
+  minute and second digits moving between consecutive cals.
 - **TLV-addressed reads with wider tags.** Fuzz testing of `0x03`, `0x08`,
   `0x25`, `0x31`, `0x33`, `0x48`, `0x50`, `0x51`, `0x7E`, `0xAA`, `0xB5`,
   `0xB7`, `0xBB` under TLV-11/12/14/22/24 args returned no new data —
@@ -1080,7 +1182,7 @@ args not yet characterised):
 | `0x62` | menu-activity register | ✓ (active) | reads 0 (dead) | err_04 |
 | `0x71` | SBN read | ✓ | ✓ | ✓ |
 | `0x76` | temperature | ✓ | ✓ | ✓ |
-| `0x78` | read adjustment unit | — (unprobed) | — | ✓ (= 2, g) |
+| `0x78` | read adjustment unit | err_04 | — | ✓ (= 2, g) |
 | `0xAA` | universal constant | ✓ | ✓ | ✓ |
 | `0xB9` | last cal record | ✓ | err_04 | ✓ (zeroed — no cal) |
 | `0xBA` | config generation counter | ✓ | err_04 | ✓ |
@@ -1153,7 +1255,8 @@ See §8.2 for the layout and family-specific state byte meanings. In
 summary:
 
 - Cubis (MSE): state byte has bit `0x80` set (unstable `0x80`, stable
-  `0x88`); status byte uses bit `0x08` for ADC-trust and bit `0x10`
+  `0x88`), plus bits `0x01`/`0x40` while an internal adjustment runs
+  (§7.7.1); status byte uses bit `0x08` for ADC-trust and bit `0x10`
   for isoCAL-due.
 - Non-Cubis (WZA, BCE): state byte never sets `0x80` — stable is
   `0x08`, unstable is `0x00`; status byte uses bit `0x20` for a

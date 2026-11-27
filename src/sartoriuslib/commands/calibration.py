@@ -10,9 +10,10 @@ Per ``docs/protocol.md`` §7.7 and §7.12:
 
 The ``CalRecord`` dataclass preserves the three-tier storage
 distinction from §7.12: :attr:`CalRecord.temperature_celsius` can be
-present while :attr:`signature` + :attr:`counters` are all-zero (the
-RAM metadata buffer was cleared by a cold boot but the temperature
-field lives in a separate backing location).
+present while the timestamp bytes are all-zero (the RAM metadata buffer
+was cleared by a cold boot but the temperature field lives in a separate
+backing location). :attr:`CalRecord.timestamp` decodes bytes ``[4..15]``
+(``DDMMYYhhmmss``, one digit per byte, balance clock).
 """
 
 from __future__ import annotations
