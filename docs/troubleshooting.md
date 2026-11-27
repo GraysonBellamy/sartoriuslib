@@ -112,6 +112,10 @@ See [Streaming](streaming.md) for the full state machine.
 | `SartoriusConfirmationRequiredError` | `PERSISTENT` / `DANGEROUS` op without `confirm=True` | Add `confirm=True` if the operation is intentional — see [Safety](safety.md). |
 | `SartoriusCapabilityError` | `strict=True` and prior mismatch | Drop `strict` or set the prior; the device is the source of truth. |
 | `SartoriusAutoprintActiveError` | SBI autoprint blocking command/reply | See above. |
+| `SartoriusAdjustmentTimeoutError` | Internal adjustment still running at the wait deadline | Usually an unsettled bench: the balance waits for stability between phases. Raise `timeout`, or `abort_adjustment()`. The balance was not stopped. |
+| `SartoriusAdjustmentAbortedError` | Adjustment ended without a new cal record | Cancelled (`abort_adjustment()` or front panel) or failed on the balance. Check the pan and draft shield, then retry. |
+| `SartoriusAdjustmentNotStartedError` | Balance ACKed `0x28` but never started, or nothing was running to wait for | Check the front panel for a message; on non-Cubis families `0x28` may not apply. |
+| `SartoriusAdjustmentInProgressError` | `internal_adjust(wait=True)` while one (e.g. isoCAL) is already running | Nothing was sent. Use `wait_for_adjustment()` instead. |
 
 ## Offline decode with `sarto-decode`
 
@@ -139,10 +143,22 @@ the device. Always behind a risk-visible prefix:
 | `sarto-diag argfuzz` | Probe an opcode's argument space (TLV / index). Destructive ops gated. |
 | `sarto-diag tap` | Passively watch the line and decode in real time. |
 | `sarto-diag stream` | Continuous sample stream for jitter / framing analysis. |
+| `sarto-diag adjust-trace` | Run a real internal adjustment and log every exchange while it runs (JSONL + a state-run summary). `--fast` gives sub-10 ms status resolution. `--abort-after` / `--reenter-after` test `0x29` / a repeated `0x28`. `--dry-run` is read-only. Destructive. |
 
 Destructive subcommands require the explicit
 `--i-understand-this-is-destructive` flag. Never invoked from normal
 discovery or `open_device`.
+
+`adjust-trace` is how [Wire protocol](protocol.md) §7.7.1 was captured.
+To check whether another balance reports adjustments the same way, run
+it there with an empty or tared pan and compare the summary:
+
+```bash
+sarto-diag adjust-trace /dev/ttyUSB0 --baudrate 9600 --out adjust.jsonl \
+    --i-understand-this-is-destructive
+sarto-diag adjust-trace /dev/ttyUSB0 --baudrate 9600 --out adjust_fast.jsonl --fast \
+    --i-understand-this-is-destructive
+```
 
 ## Forced protocol switch
 

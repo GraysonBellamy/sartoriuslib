@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import math
 import struct
+from datetime import datetime
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -19,6 +21,9 @@ from sartoriuslib.devices.capability import Capability, SafetyTier
 from sartoriuslib.errors import SartoriusParseError
 from sartoriuslib.protocol.base import ProtocolKind
 from sartoriuslib.protocol.xbpi import build_command, checksum, parse_frame
+
+if TYPE_CHECKING:
+    from sartoriuslib.devices.models import CalRecord
 
 
 def _rx(subtype: int, body: bytes) -> bytes:
@@ -93,6 +98,54 @@ class TestLastCalRecordDecode:
         assert LAST_CAL_RECORD.xbpi is not None
         with pytest.raises(SartoriusParseError, match="17 bytes"):
             LAST_CAL_RECORD.xbpi.decode(frame, ctx)
+
+
+def _record(ctx: CommandContext, stamp: bytes, temp: float = 26.9) -> CalRecord:
+    body = struct.pack(">f", temp) + stamp + b"\x00"
+    assert LAST_CAL_RECORD.xbpi is not None
+    return LAST_CAL_RECORD.xbpi.decode(parse_frame(_rx(0x51, body)), ctx)
+
+
+class TestCalRecordTimestamp:
+    """``0xB9`` bytes [4..15] = ``DDMMYYhhmmss``, one digit per byte (§7.12)."""
+
+    @pytest.mark.parametrize(
+        ("stamp_hex", "expected"),
+        [
+            # Bench record found on 2026-11-27 (written the day issue #55 was filed).
+            ("020401010206010900050500", datetime(2026, 11, 24, 19, 5, 50)),
+            # Two adjusts 3 min 31 s apart on the host clock, 3:31 apart here too.
+            ("020701010206010505060409", datetime(2026, 11, 27, 15, 56, 49)),
+            ("020701010206010600000200", datetime(2026, 11, 27, 16, 0, 20)),
+        ],
+    )
+    def test_decodes_bench_records(
+        self, ctx: CommandContext, stamp_hex: str, expected: datetime
+    ) -> None:
+        record = _record(ctx, bytes.fromhex(stamp_hex))
+        assert record.timestamp == expected
+        assert record.timestamp is not None
+        assert record.timestamp.tzinfo is None  # balance-local clock, no zone
+
+    def test_old_doc_signature_was_a_date(self, ctx: CommandContext) -> None:
+        """The §7.12 "signature" ``01 09 00 04 02 06 00 07 01`` reads as 19.04.26 07:1x."""
+        record = _record(ctx, bytes.fromhex("010900040206000701") + bytes([5, 3, 0]))
+        assert record.timestamp == datetime(2026, 4, 19, 7, 15, 30)
+
+    def test_empty_record_has_no_timestamp(self, ctx: CommandContext) -> None:
+        assert _record(ctx, bytes(12)).timestamp is None
+
+    @pytest.mark.parametrize(
+        "stamp_hex",
+        [
+            "0a0401010206010900050500",  # byte > 9: not a digit string
+            "020401030206010900050500",  # month 13
+            "030201020206010900050500",  # day 32
+            "020401010206020500050500",  # hour 25
+        ],
+    )
+    def test_malformed_stamp_is_none(self, ctx: CommandContext, stamp_hex: str) -> None:
+        assert _record(ctx, bytes.fromhex(stamp_hex)).timestamp is None
 
 
 class TestInternalAdjust:

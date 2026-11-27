@@ -267,6 +267,55 @@ class SartoriusFirmwareError(SartoriusCapabilityError):
     """Command is outside the supported firmware window."""
 
 
+# --- Adjustment ----------------------------------------------------------
+
+
+class SartoriusAdjustmentError(SartoriusError):
+    """An internal adjustment did not end the way the caller waited for.
+
+    Raised by ``Balance.internal_adjust(wait=True)`` and
+    ``Balance.wait_for_adjustment()``. Deliberately *not* a transport
+    error: the link is healthy, so connection-retry logic should not
+    react to it. ``context.extra`` carries ``polls``,
+    ``transient_errors``, ``elapsed_s``, ``seen_adjusting`` and the last
+    ``raw_state``/``raw_status``.
+    """
+
+
+class SartoriusAdjustmentTimeoutError(SartoriusAdjustmentError):
+    """Still adjusting (or not answering) when the wait deadline passed.
+
+    The balance was **not** told to stop — call
+    ``Balance.abort_adjustment()`` if that is wanted.
+    """
+
+
+class SartoriusAdjustmentAbortedError(SartoriusAdjustmentError):
+    """The adjustment ended without writing a new cal record.
+
+    Seen when ``0x29`` was sent (``Balance.abort_adjustment()``), the
+    operator cancelled on the front panel, or the balance gave up
+    (e.g. the bench never settled). xBPI does not distinguish these.
+    """
+
+
+class SartoriusAdjustmentNotStartedError(SartoriusAdjustmentError):
+    """No adjustment was observed.
+
+    After ``0x28`` was acknowledged the balance never entered the
+    adjusting state, or ``wait_for_adjustment()`` was called with
+    nothing running.
+    """
+
+
+class SartoriusAdjustmentInProgressError(SartoriusAdjustmentError):
+    """Refused to start: an adjustment (e.g. isoCAL) is already running.
+
+    Nothing was sent. Use ``Balance.wait_for_adjustment()`` to wait for
+    the running one.
+    """
+
+
 # --- Sinks ---------------------------------------------------------------
 
 
@@ -328,6 +377,11 @@ __all__ = [
     "ErrorContext",
     "InvalidParameterIndexError",
     "InvalidSbnError",
+    "SartoriusAdjustmentAbortedError",
+    "SartoriusAdjustmentError",
+    "SartoriusAdjustmentInProgressError",
+    "SartoriusAdjustmentNotStartedError",
+    "SartoriusAdjustmentTimeoutError",
     "SartoriusAutoprintActiveError",
     "SartoriusCapabilityError",
     "SartoriusCapabilityWarning",

@@ -157,6 +157,30 @@ class TestDecodeStatusBlock:
         with pytest.raises(SartoriusParseError, match="8 bytes"):
             decode_status_block_body(b"\x00" * 7)
 
+    @pytest.mark.parametrize(
+        ("state", "adjusting"),
+        [
+            (0xC0, True),  # adjust start: 0x40 only
+            (0xC1, True),
+            (0xC9, True),  # raw stable bit set — refers to the cal weight
+            (0x89, True),
+            (0x81, True),
+            (0x88, False),  # rest (and the 0.2 s mid-adjust gap)
+            (0x80, False),
+            (0x82, False),  # overload
+            (0x84, False),  # underload
+        ],
+    )
+    def test_cubis_adjusting_bits(self, state: int, adjusting: bool) -> None:
+        body = bytes([0x00, 0x00, 0x81, state, 0x08, 0x10, 0x00, 0x01])
+        s = decode_status_block_body(body)
+        assert s.adjusting is adjusting
+        assert s.stable is bool(state & 0x08)  # raw bit untouched at this layer
+
+    def test_non_cubis_adjusting_unknown(self) -> None:
+        body = bytes([0x00, 0x00, 0x81, 0x09, 0x20, 0x10, 0x00, 0x01])
+        assert decode_status_block_body(body).adjusting is None
+
 
 class TestIsStatusBlockBody:
     def test_status_block_shape(self) -> None:

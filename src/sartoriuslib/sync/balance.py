@@ -15,8 +15,12 @@ Design reference: ``docs/design.md`` §9.
 from __future__ import annotations
 
 from contextlib import ExitStack, contextmanager
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, overload
 
+from sartoriuslib.devices.adjustment import (
+    DEFAULT_ADJUST_POLL_INTERVAL_S,
+    DEFAULT_ADJUST_TIMEOUT_S,
+)
 from sartoriuslib.devices.factory import open_device
 from sartoriuslib.sync.portal import SyncPortal
 
@@ -25,6 +29,7 @@ if TYPE_CHECKING:
 
     from sartoriuslib.devices.balance import Balance, SartoriusDeviceSnapshot
     from sartoriuslib.devices.models import (
+        AdjustmentResult,
         BalanceStatus,
         CalRecord,
         DeviceInfo,
@@ -224,18 +229,78 @@ class SyncBalance:
         """Blocking :meth:`Balance.last_cal_record`."""
         return self._portal.call(self._bal.last_cal_record)
 
+    @overload
+    def internal_adjust(
+        self,
+        *,
+        cal_type: int | None = ...,
+        confirm: bool = ...,
+        wait: Literal[False] = ...,
+        timeout: float = ...,
+        poll_interval: float = ...,
+    ) -> None: ...
+
+    @overload
+    def internal_adjust(
+        self,
+        *,
+        cal_type: int | None = ...,
+        confirm: bool = ...,
+        wait: Literal[True],
+        timeout: float = ...,
+        poll_interval: float = ...,
+    ) -> AdjustmentResult: ...
+
+    @overload
+    def internal_adjust(
+        self,
+        *,
+        cal_type: int | None = ...,
+        confirm: bool = ...,
+        wait: bool,
+        timeout: float = ...,
+        poll_interval: float = ...,
+    ) -> AdjustmentResult | None: ...
+
     def internal_adjust(
         self,
         *,
         cal_type: int | None = None,
         confirm: bool = False,
-    ) -> None:
-        """Blocking :meth:`Balance.internal_adjust`."""
-        self._portal.call(
+        wait: bool = False,
+        timeout: float = DEFAULT_ADJUST_TIMEOUT_S,
+        poll_interval: float = DEFAULT_ADJUST_POLL_INTERVAL_S,
+    ) -> AdjustmentResult | None:
+        """Blocking :meth:`Balance.internal_adjust`.
+
+        With ``wait=True`` this blocks the calling thread for the whole
+        adjustment (~24 s on an MSE1203S).
+        """
+        return self._portal.call(
             self._bal.internal_adjust,
             cal_type=cal_type,
             confirm=confirm,
+            wait=wait,
+            timeout=timeout,
+            poll_interval=poll_interval,
         )
+
+    def wait_for_adjustment(
+        self,
+        *,
+        timeout: float = DEFAULT_ADJUST_TIMEOUT_S,
+        poll_interval: float = DEFAULT_ADJUST_POLL_INTERVAL_S,
+    ) -> AdjustmentResult:
+        """Blocking :meth:`Balance.wait_for_adjustment`."""
+        return self._portal.call(
+            self._bal.wait_for_adjustment,
+            timeout=timeout,
+            poll_interval=poll_interval,
+        )
+
+    def abort_adjustment(self) -> bool:
+        """Blocking :meth:`Balance.abort_adjustment`."""
+        return self._portal.call(self._bal.abort_adjustment)
 
     # ------------------------------------------------------------------ lifecycle ops
 

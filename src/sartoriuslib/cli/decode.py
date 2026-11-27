@@ -264,6 +264,8 @@ def _append_measurement_decode(lines: list[str], body: bytes) -> None:
             lines.append(f"    adc_trusted:  {sb.adc_trusted}")
         if sb.isocal_due is not None:
             lines.append(f"    isocal_due:   {sb.isocal_due}")
+        if sb.adjusting is not None:
+            lines.append(f"    adjusting:    {sb.adjusting}")
         return
     if len(body) == _SHORT_MEASUREMENT_LEN:
         try:

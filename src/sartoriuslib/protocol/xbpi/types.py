@@ -104,8 +104,11 @@ class StatusBlockBody:
 
     See ``docs/protocol.md`` §8.2. State/status encoding is family-specific;
     the derived ``stable`` / ``overload`` / ``underload`` flags extract the
-    portable bits. ``adc_trusted`` and ``isocal_due`` are MSE-only signals
-    and are ``None`` when the source is not a Cubis.
+    portable bits. ``adc_trusted``, ``isocal_due`` and ``adjusting`` are
+    MSE-only signals and are ``None`` when the source is not a Cubis.
+
+    ``stable`` is the raw state bit. While ``adjusting`` it describes the
+    internal cal weight, not the pan (§7.7.1).
     """
 
     raw: bytes
@@ -118,6 +121,7 @@ class StatusBlockBody:
     underload: bool
     adc_trusted: bool | None
     isocal_due: bool | None
+    adjusting: bool | None = None
 
 
 @dataclass(frozen=True, slots=True)

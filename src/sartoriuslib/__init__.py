@@ -46,6 +46,7 @@ from sartoriuslib.devices.discovery import (
 )
 from sartoriuslib.devices.factory import open_device
 from sartoriuslib.devices.models import (
+    AdjustmentResult,
     BalanceState,
     BalanceStatus,
     CalRecord,
@@ -61,6 +62,11 @@ from sartoriuslib.errors import (
     ErrorContext,
     InvalidParameterIndexError,
     InvalidSbnError,
+    SartoriusAdjustmentAbortedError,
+    SartoriusAdjustmentError,
+    SartoriusAdjustmentInProgressError,
+    SartoriusAdjustmentNotStartedError,
+    SartoriusAdjustmentTimeoutError,
     SartoriusAutoprintActiveError,
     SartoriusCapabilityError,
     SartoriusCapabilityWarning,
@@ -115,6 +121,7 @@ from sartoriuslib.version import __version__
 __all__ = [
     "DEFAULT_DISCOVERY_BAUDRATES",
     "AcquisitionSummary",
+    "AdjustmentResult",
     "Availability",
     "Balance",
     "BalanceFamily",
@@ -145,6 +152,11 @@ __all__ = [
     "Recording",
     "SafetyTier",
     "Sample",
+    "SartoriusAdjustmentAbortedError",
+    "SartoriusAdjustmentError",
+    "SartoriusAdjustmentInProgressError",
+    "SartoriusAdjustmentNotStartedError",
+    "SartoriusAdjustmentTimeoutError",
     "SartoriusAutoprintActiveError",
     "SartoriusCapabilityError",
     "SartoriusCapabilityWarning",

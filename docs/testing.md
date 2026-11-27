@@ -112,6 +112,49 @@ ships builders that return ready-to-use `script=` mappings:
 These builders compose — merge their dicts to script multiple commands
 in one transport.
 
+`build_cal_record_body(temperature_celsius=..., timestamp=...)` builds a
+17-byte `0xB9` cal-record body for scripting `last_cal_record()`.
+
+## `AdjustmentSimulator` — internal adjustments without hardware
+
+`AdjustmentSimulator` scripts a Cubis balance running internal
+adjustments. It replays the state timeline measured on an MSE1203S
+([Wire protocol](protocol.md#771-what-the-balance-reports-during-an-internal-adjustment)),
+including the 0.2 s mid-adjust gap, the cal record written at the end,
+`0x29` aborts, and the fake weight readings. Use it to test code built
+on `internal_adjust(wait=True)`, `wait_for_adjustment()` and
+`abort_adjustment()`:
+
+```python
+from sartoriuslib import open_device
+from sartoriuslib.testing import (
+    AdjustmentSimulator,
+    FakeTransport,
+    build_identify_script,
+    build_metrology_script,
+)
+
+sim = AdjustmentSimulator(speed=200.0)  # the ~24 s adjust takes ~0.12 s
+transport = FakeTransport({**build_identify_script(), **build_metrology_script()})
+sim.install(transport)
+
+async with await open_device(transport) as bal:
+    result = await bal.internal_adjust(confirm=True, wait=True, poll_interval=0.01)
+    print(result.cal_record.timestamp)  # 2026-11-27 15:56:49
+```
+
+| Option | Effect |
+| --- | --- |
+| `speed=` | Simulated seconds per real second. |
+| `outcome="hang"` / `"ignore"` | Never finish / ACK `0x28` but never start — exercises the timeout and not-started paths. |
+| `poll_faults={i: "silent" \| "partial" \| "busy"}` | Status request *i* gets no reply / a truncated frame / err `0x06`. |
+| `sim.start()` | The balance starts an adjustment on its own (isoCAL). |
+| `step_per_status_poll=` | Virtual clock that advances per status poll; pass `sim.now` as `clock=` to `sartoriuslib.devices.adjustment.wait_for_adjustment` for fully deterministic tests. |
+
+The Cancel-button path is `await bal.abort_adjustment()` from a second
+task. The waiter raises `SartoriusAdjustmentAbortedError` once the
+simulated unload (2.5 s) and the 1 s settle window have passed.
+
 ## Fixture files
 
 `parse_xbpi_fixture(text)` and `parse_sbi_fixture(text)` parse the

@@ -4,7 +4,7 @@
 ``--i-understand-this-is-destructive``. Never invoked from normal
 discovery or open. See design doc §13.
 
-Six subcommands under the ``sarto-diag`` namespace:
+Seven subcommands under the ``sarto-diag`` namespace:
 
 - ``snapshot`` — read-only battery of every safe-listed xBPI opcode;
   capability-discovery aid.
@@ -14,6 +14,8 @@ Six subcommands under the ``sarto-diag`` namespace:
 - ``sweep`` — xBPI opcode sweep across a range; **destructive** —
   some opcodes mutate persistent state.
 - ``argfuzz`` — argument fuzzer for a single opcode; **destructive**.
+- ``adjust-trace`` — runs an internal adjustment and records every
+  exchange while it runs; **destructive** (``--dry-run`` is read-only).
 
 Entry-point dispatcher::
 
@@ -23,16 +25,22 @@ Entry-point dispatcher::
     sarto-diag stream PORT [--duration 5]
     sarto-diag sweep PORT --i-understand-this-is-destructive
     sarto-diag argfuzz PORT --opcode 0xNN --i-understand-this-is-destructive
+    sarto-diag adjust-trace PORT --out FILE --i-understand-this-is-destructive
 """
 
 from __future__ import annotations
 
 import argparse
+import importlib
+from typing import TYPE_CHECKING, cast
 
 from sartoriuslib.cli.diagnostics._gate import (
     DESTRUCTIVE_FLAG,
     require_destructive_ack,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 __all__ = ["DESTRUCTIVE_FLAG", "main", "require_destructive_ack"]
 
@@ -55,7 +63,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "subcommand",
-        choices=("snapshot", "jitter", "tap", "stream", "sweep", "argfuzz"),
+        choices=tuple(_SUBCOMMAND_MODULES),
         help="Diagnostic subcommand to run.",
     )
     parser.add_argument(
@@ -66,28 +74,20 @@ def main(argv: list[str] | None = None) -> int:
     ns = parser.parse_args(argv)
     # Lazy imports keep the gate-only path (e.g. ``sarto-diag --help``)
     # cheap and avoid the partially-initialised circle on first import.
-    if ns.subcommand == "snapshot":
-        from sartoriuslib.cli.diagnostics import snapshot  # noqa: PLC0415
+    module = importlib.import_module(
+        f"sartoriuslib.cli.diagnostics.{_SUBCOMMAND_MODULES[ns.subcommand]}"
+    )
+    sub_main = cast("Callable[[list[str]], int]", module.main)
+    return sub_main(ns.rest)
 
-        return snapshot.main(ns.rest)
-    if ns.subcommand == "jitter":
-        from sartoriuslib.cli.diagnostics import jitter  # noqa: PLC0415
 
-        return jitter.main(ns.rest)
-    if ns.subcommand == "tap":
-        from sartoriuslib.cli.diagnostics import tap  # noqa: PLC0415
-
-        return tap.main(ns.rest)
-    if ns.subcommand == "stream":
-        from sartoriuslib.cli.diagnostics import stream  # noqa: PLC0415
-
-        return stream.main(ns.rest)
-    if ns.subcommand == "sweep":
-        from sartoriuslib.cli.diagnostics import sweep  # noqa: PLC0415
-
-        return sweep.main(ns.rest)
-    if ns.subcommand == "argfuzz":
-        from sartoriuslib.cli.diagnostics import argfuzz  # noqa: PLC0415
-
-        return argfuzz.main(ns.rest)
-    raise AssertionError(f"unreachable: argparse choices guard {ns.subcommand!r}")
+#: ``sarto-diag`` subcommand → module under :mod:`sartoriuslib.cli.diagnostics`.
+_SUBCOMMAND_MODULES: dict[str, str] = {
+    "snapshot": "snapshot",
+    "jitter": "jitter",
+    "tap": "tap",
+    "stream": "stream",
+    "sweep": "sweep",
+    "argfuzz": "argfuzz",
+    "adjust-trace": "adjust_trace",
+}

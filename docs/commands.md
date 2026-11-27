@@ -130,7 +130,60 @@ parameter indices. Setters validate enum values before sending and require
 | Command | Opcode | Safety | Surface |
 | --- | --- | --- | --- |
 | `LAST_CAL_RECORD` | xBPI `0xB9` | READ_ONLY | `Balance.last_cal_record()` (capability-gated on `CAL_RECORD`) |
-| `INTERNAL_ADJUST` | xBPI `0x28` | DANGEROUS | `Balance.internal_adjust(confirm=True)` (capability-gated on `INTERNAL_CAL`) |
+| `INTERNAL_ADJUST` | xBPI `0x28` | DANGEROUS | `Balance.internal_adjust(confirm=True, wait=False)` (capability-gated on `INTERNAL_CAL`) |
+| `ABORT_ADJUSTMENT` | xBPI `0x29` | STATEFUL | `Balance.abort_adjustment()` (capability-gated on `INTERNAL_CAL`) |
+
+#### Waiting for an internal adjustment
+
+`0x28` only *starts* the adjustment. The balance acknowledges within a few
+milliseconds, then cycles its internal weight for about 24 s on an
+MSE1203S. Pass `wait=True` to return only when it has finished:
+
+```python
+from sartoriuslib import (
+    SartoriusAdjustmentAbortedError,
+    SartoriusAdjustmentTimeoutError,
+)
+
+try:
+    result = await bal.internal_adjust(confirm=True, wait=True, timeout=120)
+except SartoriusAdjustmentAbortedError:
+    ...  # ended without a new cal record (Cancel, front panel, or balance gave up)
+except SartoriusAdjustmentTimeoutError:
+    ...  # still running after `timeout`; NOT stopped — call abort_adjustment() if wanted
+else:
+    rec = result.cal_record  # fresh 0xB9 record
+    print(rec.temperature_celsius, rec.timestamp, result.duration_s)
+```
+
+| Call | Use |
+| --- | --- |
+| `internal_adjust(confirm=True, wait=True, timeout=120.0, poll_interval=0.25)` | Start and wait. Refuses with `SartoriusAdjustmentInProgressError` (nothing sent) if an adjustment is already running. |
+| `wait_for_adjustment(timeout=..., poll_interval=...)` | Wait for one already running: started with `wait=False`, by another task, or by the balance itself (isoCAL). |
+| `abort_adjustment()` | Send `0x29`. Returns `True` if one was running, `False` if not (so a Cancel button racing the natural end needs no error handling). |
+| `status().state is BalanceState.ADJUSTING` | Point-in-time check. It can blink off for ~0.2 s mid-adjust, so use `wait_for_adjustment()` to wait for the end. |
+
+How the wait decides:
+
+- It polls the status block (`0x30`, about 4 ms of bus time each), which
+  interleaves with a weight stream on the same balance.
+- **Success:** idle and the cal record (`0xB9`) has changed. It returns
+  right away.
+- **Aborted:** idle for 1 s with the record unchanged.
+- **Not started:** adjusting was never seen.
+- **Timeout:** still adjusting at the deadline.
+
+Polls that time out or come back garbled are retried, and leftover bytes
+are drained. Cancelling the await is safe: no poll is cut mid-frame and
+nothing is sent to the balance, which finishes on its own. Weight
+readings taken during an adjustment are not pan weights; see
+[Wire protocol](protocol.md#81-short-measurement-8-byte-body) §8.1.
+
+`CalRecord.timestamp` is the completion time on the **balance's** clock
+(naive `datetime`). Compare two records with each other rather than with
+the host clock. Tracking the adjust bits needs the Cubis status encoding.
+On other families the wait falls back to watching `0xB9` alone, so an
+abort there surfaces as a timeout.
 
 ### System — [commands/system.py](../src/sartoriuslib/commands/system.py)
 

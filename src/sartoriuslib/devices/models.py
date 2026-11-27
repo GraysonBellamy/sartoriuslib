@@ -11,12 +11,12 @@ dual-protocol API (design §4).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import StrEnum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
-    from datetime import datetime
 
     from sartoriuslib.devices.capability import Availability, Capability, ProbeSource
     from sartoriuslib.devices.kind import BalanceFamily
@@ -27,6 +27,7 @@ if TYPE_CHECKING:
 
 
 __all__ = [
+    "AdjustmentResult",
     "BalanceState",
     "BalanceStatus",
     "CalRecord",
@@ -39,9 +40,23 @@ __all__ = [
 ]
 
 
-class BalanceState(StrEnum):
-    """High-level weighing state derived from the status block."""
+#: ``0xB9`` bytes ``[4..15]``: one decimal digit per byte, ``DDMMYYhhmmss``.
+_CAL_STAMP_DIGITS: Final[int] = 12
+_MAX_DIGIT: Final[int] = 9
 
+
+class BalanceState(StrEnum):
+    """High-level weighing state derived from the status block.
+
+    ``ADJUSTING`` (Cubis, xBPI only) means an internal adjustment is
+    running — started by :meth:`Balance.internal_adjust` or by the
+    balance itself (isoCAL). Weight reads in that state are not pan
+    weights. It can drop out for ~0.2 s mid-adjust (``docs/protocol.md``
+    §7.7.1); use :meth:`Balance.wait_for_adjustment` rather than a
+    single status read to decide that an adjustment has finished.
+    """
+
+    ADJUSTING = "adjusting"
     STABLE = "stable"
     UNSTABLE = "unstable"
     OVERLOAD = "overload"
@@ -136,8 +151,11 @@ class Reading:
 class BalanceStatus:
     """Status-block snapshot from xBPI ``0x30`` (or SBI equivalent).
 
-    ``adc_trusted`` and ``isocal_due`` are MSE-only signals; on WZA/BCE
-    they decode to ``None``. ``raw_state`` and ``raw_status`` are the
+    ``adc_trusted``, ``isocal_due`` and ``adjusting`` are MSE-only
+    signals; on WZA/BCE/SBI they decode to ``None``. While ``adjusting``
+    is ``True``, :attr:`state` is :attr:`BalanceState.ADJUSTING` and
+    :attr:`stable` is ``False`` (the raw stable bit then refers to the
+    internal cal weight). ``raw_state`` and ``raw_status`` are the
     untouched wire bytes (as integers for xBPI, strings for SBI where
     applicable) so callers can cross-check against ``docs/protocol.md``
     §8.2 without re-decoding.
@@ -151,6 +169,7 @@ class BalanceStatus:
     raw_state: int | str | None
     raw_status: int | str | None
     raw: bytes | str
+    adjusting: bool | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -188,11 +207,20 @@ class ParameterEntry:
 class CalRecord:
     """Last-calibration snapshot from ``0xB9``.
 
-    Layout per ``docs/protocol.md`` §7.12. The 17-byte RAM buffer is
-    cleared on cold boot, so :attr:`temperature_celsius` can be present
-    (the kernel maintains it separately) while :attr:`signature` and
-    :attr:`counters` are all-zero. Callers that just want "was there a
-    cal?" should check :attr:`has_metadata`.
+    Layout per ``docs/protocol.md`` §7.12: bytes ``[0..3]`` are the
+    cal temperature and bytes ``[4..15]`` the completion time on the
+    balance's own clock, one decimal digit per byte
+    (``D D M M Y Y h h m m s s``), decoded by :attr:`timestamp`.
+
+    :attr:`signature` (bytes ``[4..12]``) and :attr:`counters` (bytes
+    ``[13..15]``) are kept as raw slices for compatibility. They predate
+    the timestamp decoding and are simply the date/hour digits and the
+    minute/second digits respectively.
+
+    The 17-byte RAM buffer is cleared on cold boot, so
+    :attr:`temperature_celsius` can be present (the kernel maintains it
+    separately) while the timestamp bytes are all-zero. Callers that just
+    want "was there a cal?" should check :attr:`has_metadata`.
     """
 
     temperature_celsius: float | None
@@ -211,6 +239,56 @@ class CalRecord:
         state — see §7.12's three-tier storage note.
         """
         return any(self.signature) or any(self.counters)
+
+    @property
+    def timestamp(self) -> datetime | None:
+        """When the last cal completed, on the balance's own clock.
+
+        Naive :class:`~datetime.datetime`. The balance clock is whatever
+        the front panel was set to — no timezone, and it can be minutes
+        or hours off the host clock — so compare two records with each
+        other rather than with host time. ``None`` when the record is
+        empty (post cold boot) or the bytes are not a valid
+        ``DDMMYYhhmmss`` digit string.
+        """
+        digits = bytes(self.signature) + bytes(self.counters)
+        if len(digits) != _CAL_STAMP_DIGITS or not any(digits):
+            return None
+        if any(d > _MAX_DIGIT for d in digits):
+            return None
+        day, month, year, hour, minute, second = (
+            digits[i] * 10 + digits[i + 1] for i in range(0, _CAL_STAMP_DIGITS, 2)
+        )
+        try:
+            return datetime(2000 + year, month, day, hour, minute, second)
+        except ValueError:
+            return None
+
+
+@dataclass(frozen=True, slots=True)
+class AdjustmentResult:
+    """Outcome of a completed internal adjustment.
+
+    Returned by ``Balance.internal_adjust(wait=True)`` and
+    ``Balance.wait_for_adjustment()``. :attr:`cal_record` is the fresh
+    ``0xB9`` record written by this adjustment (so
+    ``cal_record.temperature_celsius`` / ``cal_record.timestamp`` describe
+    it); :attr:`previous_cal_record` is the one it replaced.
+
+    :attr:`started_at` / :attr:`finished_at` are host UTC times;
+    :attr:`duration_s` is monotonic time from sending ``0x28`` (or from
+    the start of the wait, when re-attaching) to the poll that saw the
+    balance idle with the new record. :attr:`transient_errors` counts
+    polls that got no usable reply and were retried.
+    """
+
+    cal_record: CalRecord
+    previous_cal_record: CalRecord
+    started_at: datetime
+    finished_at: datetime
+    duration_s: float
+    polls: int
+    transient_errors: int
 
 
 @dataclass(frozen=True, slots=True)

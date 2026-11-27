@@ -16,7 +16,8 @@ Metrology, parameters, cal, persistence:
     :meth:`capacity`, :meth:`increment`, :meth:`temperature`,
     :meth:`read_parameter`, :meth:`write_parameter`,
     :meth:`save_menu`, :meth:`reload_menu`,
-    :meth:`last_cal_record`, :meth:`internal_adjust`.
+    :meth:`last_cal_record`, :meth:`internal_adjust`,
+    :meth:`wait_for_adjustment`, :meth:`abort_adjustment`.
 
 Typed parameter pairs:
     :meth:`get_filter_mode` / :meth:`set_filter_mode`,
@@ -34,7 +35,7 @@ import dataclasses
 import warnings
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Final, Self, cast
+from typing import TYPE_CHECKING, Final, Literal, Self, cast, overload
 
 from sartoriuslib.commands.base import CommandContext
 from sartoriuslib.commands.calibration import (
@@ -81,9 +82,11 @@ from sartoriuslib.commands.weight import (
     ReadWeightHiresRequest,
     ReadWeightRequest,
 )
+from sartoriuslib.devices import adjustment as _adjustment
 from sartoriuslib.devices.capability import Capability
 from sartoriuslib.devices.kind import BalanceFamily, classify_family
 from sartoriuslib.devices.models import (
+    AdjustmentResult,
     BalanceStatus,
     CalRecord,
     DeviceInfo,
@@ -992,12 +995,48 @@ class Balance:
         """Read the last-calibration snapshot (xBPI ``0xB9``, §7.12)."""
         return await self._session.execute(LAST_CAL_RECORD, LastCalRecordRequest())
 
+    @overload
+    async def internal_adjust(
+        self,
+        *,
+        cal_type: int | None = ...,
+        confirm: bool = ...,
+        wait: Literal[False] = ...,
+        timeout: float = ...,
+        poll_interval: float = ...,
+    ) -> None: ...
+
+    @overload
+    async def internal_adjust(
+        self,
+        *,
+        cal_type: int | None = ...,
+        confirm: bool = ...,
+        wait: Literal[True],
+        timeout: float = ...,
+        poll_interval: float = ...,
+    ) -> AdjustmentResult: ...
+
+    @overload
+    async def internal_adjust(
+        self,
+        *,
+        cal_type: int | None = ...,
+        confirm: bool = ...,
+        wait: bool,
+        timeout: float = ...,
+        poll_interval: float = ...,
+    ) -> AdjustmentResult | None: ...
+
     async def internal_adjust(
         self,
         *,
         cal_type: int | None = None,
         confirm: bool = False,
-    ) -> None:
+        wait: bool = False,
+        timeout: float = _adjustment.DEFAULT_ADJUST_TIMEOUT_S,
+        poll_interval: float = _adjustment.DEFAULT_ADJUST_POLL_INTERVAL_S,
+    ) -> AdjustmentResult | None:
         """Start an internal adjustment (xBPI ``0x28``). ``DANGEROUS``.
 
         ``cal_type`` defaults to the canonical internal-adjust selector
@@ -1006,13 +1045,99 @@ class Balance:
         Callers can pass another value in the ``0x70..0x7B`` range to
         drive external cal / linearization variants per
         ``docs/protocol.md`` §7.7.
+
+        With ``wait=False`` (the default) this returns as soon as the
+        balance acknowledges. The adjustment itself then runs for ~24 s
+        on an MSE1203S (``docs/protocol.md`` §7.7.1).
+
+        With ``wait=True`` it returns only when the adjustment has
+        finished, with an :class:`AdjustmentResult` holding the fresh
+        cal record. Before sending ``0x28`` it reads the status and the
+        current cal record (both read-only), and refuses with
+        :class:`SartoriusAdjustmentInProgressError` if an adjustment is
+        already running. Other outcomes raise
+        :class:`SartoriusAdjustmentAbortedError`,
+        :class:`SartoriusAdjustmentNotStartedError` or
+        :class:`SartoriusAdjustmentTimeoutError` — see
+        :meth:`wait_for_adjustment`. ``timeout`` counts from sending
+        ``0x28``. Cancelling the call stops the waiting, not the balance.
+
+        Args:
+            cal_type: TLV-21 cal selector (default ``0x78``, internal).
+            confirm: Must be ``True`` — the adjustment moves the internal
+                weight and rewrites the calibration.
+            wait: Wait for the adjustment to finish.
+            timeout: ``wait=True`` only: seconds before
+                :class:`SartoriusAdjustmentTimeoutError`.
+            poll_interval: ``wait=True`` only: seconds between status
+                polls.
         """
         req = (
             InternalAdjustRequest()
             if cal_type is None
             else InternalAdjustRequest(cal_type=cal_type)
         )
+        if wait:
+            return await _adjustment.internal_adjust_and_wait(
+                self._session,
+                req,
+                confirm=confirm,
+                timeout=timeout,
+                poll_interval=poll_interval,
+            )
         await self._session.execute(INTERNAL_ADJUST, req, confirm=confirm)
+        return None
+
+    async def wait_for_adjustment(
+        self,
+        *,
+        timeout: float = _adjustment.DEFAULT_ADJUST_TIMEOUT_S,
+        poll_interval: float = _adjustment.DEFAULT_ADJUST_POLL_INTERVAL_S,
+    ) -> AdjustmentResult:
+        """Wait for a running internal adjustment to finish.
+
+        For attaching to an adjustment this handle did not start with
+        ``wait=True``: one started with ``internal_adjust()``, by another
+        part of the program, or by the balance itself (isoCAL). Reads the
+        current cal record as the baseline (the balance only rewrites it
+        at the end), then polls the status block (``0x30``) every
+        ``poll_interval`` seconds. Each poll is a few milliseconds of bus
+        time and interleaves with other traffic on this balance, such as
+        a weight stream.
+
+        Returns as soon as the balance is idle with a new cal record.
+        Readings taken while waiting are not pan weights
+        (``docs/protocol.md`` §8.1).
+
+        Raises:
+            SartoriusAdjustmentAbortedError: The adjustment ended without
+                a new cal record (abort or balance-side failure).
+            SartoriusAdjustmentNotStartedError: No adjustment was running
+                (idle for ~1 s with the cal record unchanged).
+            SartoriusAdjustmentTimeoutError: Still running after
+                ``timeout`` seconds. The balance is not told to stop.
+            SartoriusProtocolUnsupportedError: Session is not on xBPI.
+
+        Cancelling the call is safe. No poll is cut off mid-frame, so the
+        port stays usable, and nothing is sent to the balance.
+        """
+        return await _adjustment.wait_for_adjustment(
+            self._session,
+            timeout=timeout,
+            poll_interval=poll_interval,
+        )
+
+    async def abort_adjustment(self) -> bool:
+        """Abort a running adjustment (xBPI ``0x29``). ``STATEFUL``.
+
+        Returns ``True`` if an adjustment was running and was told to
+        stop, ``False`` if nothing was running. The balance takes ~2.5 s
+        to unload its internal weight; a concurrent
+        :meth:`wait_for_adjustment` (or ``internal_adjust(wait=True)``)
+        then raises :class:`SartoriusAdjustmentAbortedError`. The cal
+        record is left as it was.
+        """
+        return await _adjustment.abort_adjustment(self._session)
 
     # ------------------------------------------------------------------ lifecycle ops
 

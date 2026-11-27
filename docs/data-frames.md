@@ -57,8 +57,9 @@ status-block snapshot from xBPI `0x30` or the SBI equivalent.
 
 | Field | Type | Notes |
 | --- | --- | --- |
-| `stable` | `bool \| None` | `None` when the protocol can't surface stability separately from the measurement frame. |
-| `state` | `BalanceState` | `STABLE` / `UNSTABLE` / `OVERLOAD` / `UNDERLOAD` / `OFF` / `UNKNOWN`. |
+| `stable` | `bool \| None` | `None` when the protocol can't surface stability separately from the measurement frame. `False` while adjusting. |
+| `state` | `BalanceState` | `ADJUSTING` / `STABLE` / `UNSTABLE` / `OVERLOAD` / `UNDERLOAD` / `OFF` / `UNKNOWN`. |
+| `adjusting` | `bool \| None` | An internal adjustment (or isoCAL) is running. **MSE-only signal; `None` on WZA/BCE/SBI.** Can drop out for ~0.2 s mid-adjust; use `Balance.wait_for_adjustment()` to wait for the end. |
 | `isocal_due` | `bool \| None` | **MSE-only signal; `None` on WZA/BCE/SBI.** |
 | `adc_trusted` | `bool \| None` | **MSE-only; `None` on other families.** |
 | `sequence` | `int \| None` | xBPI sequence counter; `None` on SBI. |
@@ -96,7 +97,7 @@ snapshot produced by `Balance.identify()`.
 | [`Quantity`](../src/sartoriuslib/devices/models.py) | `Balance.capacity()`, `Balance.increment()` | `value: float`, `unit: Unit`. |
 | [`TemperatureReading`](../src/sartoriuslib/devices/models.py) | `Balance.temperature(sensor)` | `celsius` is `None` when the sensor index returns the `7f ff ff ff` sentinel. |
 | [`ParameterEntry`](../src/sartoriuslib/devices/models.py) | `Balance.read_parameter(index)` | Raw `(current, max, raw)`. Typed accessors decode through the registry. |
-| [`CalRecord`](../src/sartoriuslib/devices/models.py) | `Balance.last_cal_record()` | `has_metadata` distinguishes "never recorded" (post cold boot) from "valid record". |
+| [`CalRecord`](../src/sartoriuslib/devices/models.py) | `Balance.last_cal_record()` | `temperature_celsius` and `timestamp` (when the last cal completed, as a naive `datetime` on the **balance's** clock, not the host's). `has_metadata` distinguishes "never recorded" (post cold boot) from "valid record". |
 | [`ProbeOutcome`](../src/sartoriuslib/devices/models.py) | per-capability entry on `DeviceInfo.probe_report` | `Availability` + `ProbeSource` + timestamp + human-readable detail. |
 | [`Sample`](../src/sartoriuslib/streaming/sample.py) | recorder yield | Wraps a `Reading` with device name, requested timestamp, elapsed time, error. See [Logging](logging.md). |
 
@@ -106,7 +107,7 @@ snapshot produced by `Balance.identify()`.
 | --- | --- | --- |
 | `Unit` | [registry/units.py](../src/sartoriuslib/registry/units.py) | `G`, `KG`, `MG`, `LB`, `OZ`, `CT`, `N`, ... plus `UNKNOWN`. |
 | `Sign` | [registry/units.py](../src/sartoriuslib/registry/units.py) | `POSITIVE`, `NEGATIVE`, `ZERO`, `UNKNOWN`. |
-| `BalanceState` | [devices/models.py](../src/sartoriuslib/devices/models.py) | `STABLE`, `UNSTABLE`, `OVERLOAD`, `UNDERLOAD`, `OFF`, `UNKNOWN`. |
+| `BalanceState` | [devices/models.py](../src/sartoriuslib/devices/models.py) | `ADJUSTING`, `STABLE`, `UNSTABLE`, `OVERLOAD`, `UNDERLOAD`, `OFF`, `UNKNOWN`. |
 | `ProtocolKind` | [protocol/base.py](../src/sartoriuslib/protocol/base.py) | `XBPI`, `SBI`, `AUTO`. |
 | `BalanceFamily` | [devices/kind.py](../src/sartoriuslib/devices/kind.py) | `CUBIS`, `OEM_WEIGH_CELL`, `BASIC_LAB`, `UNKNOWN`. |
 | `Capability` | [devices/capability.py](../src/sartoriuslib/devices/capability.py) | Flag bitmap — see [Balances](devices.md#capability-flags). |
