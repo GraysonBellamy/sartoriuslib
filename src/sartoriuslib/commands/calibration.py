@@ -1,4 +1,4 @@
-"""Calibration commands — last cal record (``0xB9``) and internal adjust (``0x28``).
+"""Calibration commands — cal record (``0xB9``), internal adjust (``0x28``), abort (``0x29``).
 
 Per ``docs/protocol.md`` §7.7 and §7.12:
 
@@ -6,7 +6,11 @@ Per ``docs/protocol.md`` §7.7 and §7.12:
   Layout in §7.12. Ignores TLV args. ``READ_ONLY``.
 - ``0x28`` start_adjustment: TLV-21 arg selects cal type (e.g.
   ``0x78`` / ``120`` = internal adjust). Side-effecting, observable
-  physically — ``DANGEROUS``.
+  physically — ``DANGEROUS``. Only *starts* the adjustment; see
+  :mod:`sartoriuslib.devices.adjustment` for waiting on it (§7.7.1).
+- ``0x29`` abort_adjustment: no args. ACK while an adjustment runs,
+  err ``0x06`` otherwise. Stops an in-progress operation and changes
+  nothing persistent — ``STATEFUL``.
 
 The ``CalRecord`` dataclass preserves the three-tier storage
 distinction from §7.12: :attr:`CalRecord.temperature_celsius` can be
@@ -32,9 +36,11 @@ if TYPE_CHECKING:
     from sartoriuslib.protocol.xbpi.types import XbpiFrame
 
 __all__ = [
+    "ABORT_ADJUSTMENT",
     "INTERNAL_ADJUST",
     "INTERNAL_ADJUST_CAL_TYPE",
     "LAST_CAL_RECORD",
+    "AbortAdjustmentRequest",
     "InternalAdjustRequest",
     "LastCalRecordRequest",
 ]
@@ -73,6 +79,11 @@ class InternalAdjustRequest:
     """
 
     cal_type: int = INTERNAL_ADJUST_CAL_TYPE
+
+
+@dataclass(frozen=True, slots=True)
+class AbortAdjustmentRequest:
+    """No-arg request for ``0x29``."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -124,6 +135,17 @@ class _InternalAdjustVariant(XbpiVariant[InternalAdjustRequest, None]):
         return None
 
 
+@dataclass(frozen=True, slots=True)
+class _AbortAdjustmentVariant(XbpiVariant[AbortAdjustmentRequest, None]):
+    opcode: int = 0x29
+
+    def encode(self, ctx: CommandContext, request: AbortAdjustmentRequest) -> bytes:
+        return build_command(self.opcode, src_sbn=ctx.src_sbn, dst_sbn=ctx.dst_sbn)
+
+    def decode(self, reply: XbpiFrame, ctx: CommandContext) -> None:
+        return None
+
+
 LAST_CAL_RECORD = Command[LastCalRecordRequest, CalRecord](
     name="last_cal_record",
     xbpi=_LastCalRecordVariant(),
@@ -136,4 +158,11 @@ INTERNAL_ADJUST = Command[InternalAdjustRequest, None](
     xbpi=_InternalAdjustVariant(),
     capability_hints=Capability.INTERNAL_CAL,
     safety=SafetyTier.DANGEROUS,
+)
+
+ABORT_ADJUSTMENT = Command[AbortAdjustmentRequest, None](
+    name="abort_adjustment",
+    xbpi=_AbortAdjustmentVariant(),
+    capability_hints=Capability.INTERNAL_CAL,
+    safety=SafetyTier.STATEFUL,
 )

@@ -5,6 +5,64 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Wait for an internal adjustment to finish** (#55).
+  `Balance.internal_adjust(confirm=True, wait=True, timeout=120.0)` now
+  returns only when the adjustment is over, with an `AdjustmentResult`
+  carrying the fresh cal record (`cal_record`, `previous_cal_record`,
+  `duration_s`, …). Outcomes other than success raise distinct
+  `SartoriusAdjustmentError` subclasses:
+  - `SartoriusAdjustmentAbortedError` (ended without a new record)
+  - `SartoriusAdjustmentTimeoutError` (still running at the deadline; the
+    balance is *not* stopped)
+  - `SartoriusAdjustmentNotStartedError`
+  - `SartoriusAdjustmentInProgressError` (one was already running; nothing
+    sent)
+
+  None of these are transport errors, so reconnect logic leaves them
+  alone. The default `wait=False` keeps the old return-at-the-ACK
+  behaviour unchanged.
+- **`Balance.wait_for_adjustment()`** attaches to an adjustment started
+  elsewhere: by `wait=False`, another task, or the balance's own isoCAL.
+- **`Balance.abort_adjustment()`** sends xBPI `0x29` (STATEFUL, no
+  `confirm`). It returns `True` if an adjustment was running and `False`
+  otherwise.
+- All three are mirrored on `SyncBalance`. Cancelling a wait is safe:
+  each status poll runs shielded, so no reply is left half-read on the
+  port, and nothing is sent to the balance.
+- **`BalanceState.ADJUSTING`** and **`BalanceStatus.adjusting`**, decoded
+  from Cubis status-block state bits `0x01`/`0x40` (new
+  `protocol.xbpi.STATE_ADJUSTING_BITS`). `BalanceStatus.stable` is
+  `False` while adjusting.
+- **`CalRecord.timestamp`**: the completion time of the last cal, decoded
+  from `0xB9` bytes `[4..15]` (balance clock, naive `datetime`).
+- **`sartoriuslib.testing.AdjustmentSimulator`** replays the measured
+  MSE1203S adjustment timeline on a `FakeTransport`: abort, re-entry,
+  hang and fault injection included, in real or virtual time. Also new:
+  `build_cal_record_body(...)` and the `MSE_INTERNAL_ADJUST_*` timeline
+  constants.
+
+### Documentation
+
+- `docs/protocol.md` §7.7.1 records what an MSE1203S reports during an
+  internal adjustment. Highlights:
+  - it stays fully responsive
+  - state bits `0x01`/`0x40` mark the run, with a 0.2 s gap where neither
+    is set
+  - `0xB9` is rewritten at the end
+  - `0x29` aborts and `0x28` re-entry is refused with `0x06`
+  - a run takes 24.3–24.5 s
+  - weight readings during the run are off-scale, then a fake 1300 g,
+    then 0 g
+
+  Bench captures are in `tests/fixtures/captures/mse_xbpi/internal_adjust/`.
+- `docs/protocol.md` §7.12 corrects the `0xB9` layout: bytes `[4..15]`
+  are a `DDMMYYhhmmss` timestamp, one digit per byte, not a signature
+  plus counters. `CalRecord.signature` / `counters` remain as raw slices.
+
 ## [0.4.3] - 2026-10-01
 
 ### Changed

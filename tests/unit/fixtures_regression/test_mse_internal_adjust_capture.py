@@ -19,6 +19,7 @@ from typing import Any
 import pytest
 
 from sartoriuslib.devices.models import CalRecord
+from sartoriuslib.testing import MSE_INTERNAL_ADJUST_DONE_AT_S, MSE_INTERNAL_ADJUST_TIMELINE
 
 _DIR = (
     Path(__file__).resolve().parents[2] / "fixtures" / "captures" / "mse_xbpi" / "internal_adjust"
@@ -111,6 +112,22 @@ class TestRunGTimeline:
         assert before is not None
         assert after is not None
         assert after > before
+
+    def test_simulator_timeline_matches_capture(self, run_g: dict[str, Any]) -> None:
+        """``testing.MSE_INTERNAL_ADJUST_TIMELINE`` is this capture, run-length encoded."""
+        runs: list[tuple[float, int, int]] = []
+        for t, b in run_g["status"]:
+            if run_g["first_adjusting"] <= t < run_g["done"] and (
+                not runs or (runs[-1][1], runs[-1][2]) != (b[0], b[1])
+            ):
+                runs.append((t, b[0], b[1]))
+        assert len(runs) == len(MSE_INTERNAL_ADJUST_TIMELINE)
+        for (t, state, status), (t_sim, s_sim, st_sim) in zip(
+            runs, MSE_INTERNAL_ADJUST_TIMELINE, strict=True
+        ):
+            assert (state, status) == (s_sim, st_sim)
+            assert t == pytest.approx(t_sim, abs=0.02)
+        assert run_g["done"] == pytest.approx(MSE_INTERNAL_ADJUST_DONE_AT_S, abs=0.02)
 
     def test_net_flag_04_clear_during_adjust(self, run_g: dict[str, Any]) -> None:
         during = [b[7] for t, b in run_g["net"] if 0.05 < t < run_g["done"]]

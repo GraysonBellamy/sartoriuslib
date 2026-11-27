@@ -64,7 +64,7 @@ attempts over the life of the session.
 | `CONFIG_COUNTER` | xBPI `0xBA` | Runtime-config invalidation counter (cache hint). |
 | `TEMPERATURE_SENSORS` | xBPI `0x76` | One or more temperature sensors. Count varies 1/2/3. |
 | `CAL_RECORD` | xBPI `0xB9` | Last calibration metadata. |
-| `INTERNAL_CAL` | xBPI `0x28` | Internal calibration adjust. |
+| `INTERNAL_CAL` | xBPI `0x28` / `0x29` | Internal calibration adjust, waiting for it (`wait=True`), and aborting it. |
 | `EXTERNAL_CAL` | family + probe | External calibration available. |
 | `ISOCAL` | parameter `p15`, status bit `0x10` | isoCAL automatic adjustment. |
 | `EXTENDED_OPCODES` | xBPI `0xBC` etc. | Cubis-only module list and extended opcodes. |

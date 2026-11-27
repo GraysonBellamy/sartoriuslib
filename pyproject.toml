@@ -190,6 +190,7 @@ ignore = [
 "src/sartoriuslib/devices/factory.py" = ["ASYNC109"]
 "src/sartoriuslib/devices/discovery.py" = ["ASYNC109"]
 "src/sartoriuslib/devices/balance.py" = ["ASYNC109"]
+"src/sartoriuslib/devices/adjustment.py" = ["ASYNC109"]
 "src/sartoriuslib/manager.py" = ["ASYNC109"]
 "src/sartoriuslib/maintenance.py" = ["ASYNC109"]
 # Diagnostics commands accept --timeout for the same per-call I/O bounds.

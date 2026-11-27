@@ -27,6 +27,7 @@ if TYPE_CHECKING:
 
 
 __all__ = [
+    "AdjustmentResult",
     "BalanceState",
     "BalanceStatus",
     "CalRecord",
@@ -262,6 +263,32 @@ class CalRecord:
             return datetime(2000 + year, month, day, hour, minute, second)
         except ValueError:
             return None
+
+
+@dataclass(frozen=True, slots=True)
+class AdjustmentResult:
+    """Outcome of a completed internal adjustment.
+
+    Returned by ``Balance.internal_adjust(wait=True)`` and
+    ``Balance.wait_for_adjustment()``. :attr:`cal_record` is the fresh
+    ``0xB9`` record written by this adjustment (so
+    ``cal_record.temperature_celsius`` / ``cal_record.timestamp`` describe
+    it); :attr:`previous_cal_record` is the one it replaced.
+
+    :attr:`started_at` / :attr:`finished_at` are host UTC times;
+    :attr:`duration_s` is monotonic time from sending ``0x28`` (or from
+    the start of the wait, when re-attaching) to the poll that saw the
+    balance idle with the new record. :attr:`transient_errors` counts
+    polls that got no usable reply and were retried.
+    """
+
+    cal_record: CalRecord
+    previous_cal_record: CalRecord
+    started_at: datetime
+    finished_at: datetime
+    duration_s: float
+    polls: int
+    transient_errors: int
 
 
 @dataclass(frozen=True, slots=True)

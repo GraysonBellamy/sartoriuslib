@@ -14,7 +14,7 @@ Every [`Command`](api/commands.md) carries a [`SafetyTier`](../src/sartoriuslib/
 | Tier | Examples | Gate |
 | --- | --- | --- |
 | `READ_ONLY` | weight, status, identity, capacity, increment, temperature, parameter reads | runs freely |
-| `STATEFUL` | tare, zero | runs freely — these are normal interactive operations |
+| `STATEFUL` | tare, zero, abort an adjustment | runs freely — these are normal interactive operations |
 | `PERSISTENT` | parameter writes, save menu, communication settings | requires `confirm=True` |
 | `DANGEROUS` | baud / SBN change, calibration init, protocol switch | requires `confirm=True` |
 
@@ -89,6 +89,16 @@ to hold a full session.
 responsibilities; the library cannot verify them remotely. Calls
 return without verifying weight, so a misuse silently produces a
 wrong reference value.
+
+## Internal adjustment
+
+`internal_adjust(confirm=True)` moves the internal cal weight and
+rewrites the calibration. With `wait=True` the confirmation gate runs
+before *any* I/O, including the read-only pre-flight. Neither a timeout
+nor cancelling the wait sends `0x29`: the balance finishes (or gives up)
+on its own unless the caller explicitly calls `abort_adjustment()`.
+Readings taken while it runs are not pan weights; see
+[Commands](commands.md#waiting-for-an-internal-adjustment).
 
 ## SBI autoprint
 
