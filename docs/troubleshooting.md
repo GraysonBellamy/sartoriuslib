@@ -143,10 +143,22 @@ the device. Always behind a risk-visible prefix:
 | `sarto-diag argfuzz` | Probe an opcode's argument space (TLV / index). Destructive ops gated. |
 | `sarto-diag tap` | Passively watch the line and decode in real time. |
 | `sarto-diag stream` | Continuous sample stream for jitter / framing analysis. |
+| `sarto-diag adjust-trace` | Run a real internal adjustment and log every exchange while it runs (JSONL + a state-run summary). `--fast` gives sub-10 ms status resolution. `--abort-after` / `--reenter-after` test `0x29` / a repeated `0x28`. `--dry-run` is read-only. Destructive. |
 
 Destructive subcommands require the explicit
 `--i-understand-this-is-destructive` flag. Never invoked from normal
 discovery or `open_device`.
+
+`adjust-trace` is how [Wire protocol](protocol.md) §7.7.1 was captured.
+To check whether another balance reports adjustments the same way, run
+it there with an empty or tared pan and compare the summary:
+
+```bash
+sarto-diag adjust-trace /dev/ttyUSB0 --baudrate 9600 --out adjust.jsonl \
+    --i-understand-this-is-destructive
+sarto-diag adjust-trace /dev/ttyUSB0 --baudrate 9600 --out adjust_fast.jsonl --fast \
+    --i-understand-this-is-destructive
+```
 
 ## Forced protocol switch
 

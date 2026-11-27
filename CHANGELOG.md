@@ -44,6 +44,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   hang and fault injection included, in real or virtual time. Also new:
   `build_cal_record_body(...)` and the `MSE_INTERNAL_ADJUST_*` timeline
   constants.
+- **`sarto-diag adjust-trace`** runs an internal adjustment and records
+  every exchange while it runs. It writes JSONL and prints a summary of
+  state/status runs relative to `0x28`. Options:
+  - `--fast` for sub-10 ms resolution
+  - `--abort-after` / `--reenter-after` to test `0x29` and a repeated `0x28`
+  - `--extra-ops` to poll extra opcodes
+  - `--dry-run`, which is read-only
+
+  Destructive, gated behind `--i-understand-this-is-destructive`. Use it
+  to check other families.
+
+### Changed
+
+- The `sarto-diag` dispatcher resolves subcommands from a table.
+  Behaviour is unchanged.
 
 ### Documentation
 
