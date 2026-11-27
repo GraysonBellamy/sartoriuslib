@@ -21,6 +21,7 @@ from sartoriuslib.protocol.xbpi.framing import (
 from sartoriuslib.protocol.xbpi.parser import (
     OFF_SCALE_SENTINEL,
     STABLE_FLAG,
+    STATE_ADJUSTING_BITS,
     decode_error_body,
     decode_long_measurement_body,
     decode_measurement_body,
@@ -68,6 +69,7 @@ __all__ = [
     "RX_MARKER",
     "SIGN_MASK",
     "STABLE_FLAG",
+    "STATE_ADJUSTING_BITS",
     "TLV_TAG_SIZES",
     "UNIT_ID_MASK",
     "ErrorBody",

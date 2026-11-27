@@ -45,8 +45,17 @@ _MAX_DIGIT: Final[int] = 9
 
 
 class BalanceState(StrEnum):
-    """High-level weighing state derived from the status block."""
+    """High-level weighing state derived from the status block.
 
+    ``ADJUSTING`` (Cubis, xBPI only) means an internal adjustment is
+    running — started by :meth:`Balance.internal_adjust` or by the
+    balance itself (isoCAL). Weight reads in that state are not pan
+    weights. It can drop out for ~0.2 s mid-adjust (``docs/protocol.md``
+    §7.7.1); use :meth:`Balance.wait_for_adjustment` rather than a
+    single status read to decide that an adjustment has finished.
+    """
+
+    ADJUSTING = "adjusting"
     STABLE = "stable"
     UNSTABLE = "unstable"
     OVERLOAD = "overload"
@@ -141,8 +150,11 @@ class Reading:
 class BalanceStatus:
     """Status-block snapshot from xBPI ``0x30`` (or SBI equivalent).
 
-    ``adc_trusted`` and ``isocal_due`` are MSE-only signals; on WZA/BCE
-    they decode to ``None``. ``raw_state`` and ``raw_status`` are the
+    ``adc_trusted``, ``isocal_due`` and ``adjusting`` are MSE-only
+    signals; on WZA/BCE/SBI they decode to ``None``. While ``adjusting``
+    is ``True``, :attr:`state` is :attr:`BalanceState.ADJUSTING` and
+    :attr:`stable` is ``False`` (the raw stable bit then refers to the
+    internal cal weight). ``raw_state`` and ``raw_status`` are the
     untouched wire bytes (as integers for xBPI, strings for SBI where
     applicable) so callers can cross-check against ``docs/protocol.md``
     §8.2 without re-decoding.
@@ -156,6 +168,7 @@ class BalanceStatus:
     raw_state: int | str | None
     raw_status: int | str | None
     raw: bytes | str
+    adjusting: bool | None = None
 
 
 @dataclass(frozen=True, slots=True)

@@ -104,6 +104,30 @@ class TestStatusBlock:
         assert STATUS_BLOCK.xbpi is not None
         s = STATUS_BLOCK.xbpi.decode(frame, ctx)
         assert s.state is BalanceState.OVERLOAD
+        assert s.adjusting is False
+
+    @pytest.mark.parametrize(
+        ("state", "status"),
+        # Bench sequence from docs/protocol.md §7.7.1.
+        [(0xC0, 0x08), (0xC1, 0x08), (0xC9, 0x18), (0x89, 0x28), (0x81, 0x08)],
+    )
+    def test_decode_adjusting(self, ctx: CommandContext, state: int, status: int) -> None:
+        """Adjust bits win over the raw stable bit (which describes the cal weight)."""
+        rx = _rx(0x48, bytes([0x00, 0x00, 0x81, state, status, 0x10, 0x00, 0x07]))
+        assert STATUS_BLOCK.xbpi is not None
+        s = STATUS_BLOCK.xbpi.decode(parse_frame(rx), ctx)
+        assert s.state is BalanceState.ADJUSTING
+        assert s.adjusting is True
+        assert s.stable is False
+        assert s.raw_state == state
+
+    def test_decode_mid_adjust_gap_is_not_adjusting(self, ctx: CommandContext) -> None:
+        """The 0.2 s 0x88/0x28 window reads as plain stable — §7.7.1's caveat."""
+        rx = _rx(0x48, bytes([0x00, 0x00, 0x81, 0x88, 0x28, 0x10, 0x00, 0x07]))
+        assert STATUS_BLOCK.xbpi is not None
+        s = STATUS_BLOCK.xbpi.decode(parse_frame(rx), ctx)
+        assert s.state is BalanceState.STABLE
+        assert s.adjusting is False
 
     def test_sbi_status_from_weight_line(self) -> None:
         assert STATUS_BLOCK.sbi is not None
@@ -113,6 +137,7 @@ class TestStatusBlock:
         )
         assert status.state is BalanceState.STABLE
         assert status.isocal_due is None
+        assert status.adjusting is None
 
 
 # ---------------------------------------------------------------------------

@@ -2,8 +2,9 @@
 
 Decodes to the protocol-neutral :class:`BalanceStatus` dataclass.
 Derives :class:`BalanceState` from the state byte per
-``docs/protocol.md`` §8.2: ``0x82`` overload, ``0x84`` underload, and
-bit ``0x08`` marks stable on both Cubis and non-Cubis families (just in
+``docs/protocol.md`` §8.2: Cubis bits ``0x41`` mark a running internal
+adjustment (§7.7.1), ``0x82`` overload, ``0x84`` underload, and bit
+``0x08`` marks stable on both Cubis and non-Cubis families (just in
 different bytes — the parser already normalises).
 """
 
@@ -33,8 +34,20 @@ class StatusRequest:
     """No-arg request for ``0x30`` read_balance_status_block."""
 
 
-def _state_from_status_block(*, overload: bool, underload: bool, stable: bool) -> BalanceState:
-    """Promote the 4 boolean signals to the :class:`BalanceState` enum."""
+def _state_from_status_block(
+    *,
+    overload: bool,
+    underload: bool,
+    stable: bool,
+    adjusting: bool = False,
+) -> BalanceState:
+    """Promote the boolean signals to the :class:`BalanceState` enum.
+
+    ``adjusting`` wins: during an internal adjustment the stable bit
+    describes the cal weight, not the pan.
+    """
+    if adjusting:
+        return BalanceState.ADJUSTING
     if overload:
         return BalanceState.OVERLOAD
     if underload:
@@ -55,13 +68,15 @@ class _StatusBlockVariant(XbpiVariant[StatusRequest, BalanceStatus]):
 
     def decode(self, reply: XbpiFrame, ctx: CommandContext) -> BalanceStatus:
         block = decode_status_block_body(reply.body)
+        adjusting = bool(block.adjusting)
         state = _state_from_status_block(
             overload=block.overload,
             underload=block.underload,
             stable=block.stable,
+            adjusting=adjusting,
         )
         return BalanceStatus(
-            stable=block.stable,
+            stable=block.stable and not adjusting,
             state=state,
             isocal_due=block.isocal_due,
             adc_trusted=block.adc_trusted,
@@ -69,6 +84,7 @@ class _StatusBlockVariant(XbpiVariant[StatusRequest, BalanceStatus]):
             raw_state=block.state,
             raw_status=block.status,
             raw=reply.raw,
+            adjusting=block.adjusting,
         )
 
 

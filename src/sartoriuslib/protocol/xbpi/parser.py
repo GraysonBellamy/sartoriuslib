@@ -26,6 +26,7 @@ from sartoriuslib.protocol.xbpi.units import decode_decimals, decode_sign, decod
 __all__ = [
     "OFF_SCALE_SENTINEL",
     "STABLE_FLAG",
+    "STATE_ADJUSTING_BITS",
     "STATUS_BLOCK_MARKER_PREFIX",
     "STATUS_BLOCK_MARKER_SUFFIX",
     "decode_error_body",
@@ -79,6 +80,13 @@ _STATE_STABLE_BIT: int = 0x08
 #: Cubis status-byte bits: ADC trust and isoCAL attention.
 _STATUS_ADC_TRUSTED: int = 0x08
 _STATUS_ISOCAL_DUE: int = 0x10
+
+#: Cubis state-byte bits set while an internal adjustment runs
+#: (``docs/protocol.md`` §7.7.1): ``0x01`` = adjustment in progress,
+#: ``0x40`` = internal-weight handling. Never set at rest. Both drop for
+#: one ~0.2 s window mid-adjust, so a single clear sample does not mean
+#: the adjustment is over.
+STATE_ADJUSTING_BITS: int = 0x41
 
 
 # ---------------------------------------------------------------------------
@@ -175,9 +183,11 @@ def decode_status_block_body(body: bytes) -> StatusBlockBody:
     non-Cubis this decoder still reports them when the exact pattern
     matches, and ``False`` otherwise.
 
-    ``adc_trusted`` and ``isocal_due`` are MSE-only; decoded as ``None``
-    when the frame does not look like a Cubis-style status block (base
-    bit ``0x80`` clear in ``state``).
+    ``adc_trusted``, ``isocal_due`` and ``adjusting`` are MSE-only;
+    decoded as ``None`` when the frame does not look like a Cubis-style
+    status block (base bit ``0x80`` clear in ``state``). ``adjusting``
+    is ``state & 0x41`` (§7.7.1); non-Cubis adjust encodings have not
+    been captured.
     """
     if len(body) != _STATUS_BLOCK_LEN:
         raise SartoriusParseError(
@@ -199,6 +209,7 @@ def decode_status_block_body(body: bytes) -> StatusBlockBody:
     cubis_shape = bool(state & _CUBIS_STATE_BASE)
     adc_trusted: bool | None = bool(status & _STATUS_ADC_TRUSTED) if cubis_shape else None
     isocal_due: bool | None = bool(status & _STATUS_ISOCAL_DUE) if cubis_shape else None
+    adjusting: bool | None = bool(state & STATE_ADJUSTING_BITS) if cubis_shape else None
     return StatusBlockBody(
         raw=raw,
         aux_flag=aux_flag,
@@ -210,6 +221,7 @@ def decode_status_block_body(body: bytes) -> StatusBlockBody:
         underload=underload,
         adc_trusted=adc_trusted,
         isocal_due=isocal_due,
+        adjusting=adjusting,
     )
 
 
